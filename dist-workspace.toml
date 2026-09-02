@@ -17,6 +17,12 @@ checksum = "sha256"
 install-path = "CARGO_HOME"
 # Whether to enable GitHub Attestations
 github-attestations = true
+
+# Extra steps for the build jobs; see the file itself for why they belong there
+# rather than in `extra-artifacts`.
+# Kept out of `.github/workflows/` — a file of bare steps is not a valid
+# workflow, and GitHub would flag every one it finds there.
+github-build-setup = "../build-setup.yml"
 # Everything a packager expects, in every tarball. `auto-includes` already
 # picks up README.md, CHANGELOG.md, and both LICENSE files.
 include = [

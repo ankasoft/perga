@@ -1,0 +1,14 @@
+# Extra steps injected into `dist`'s build jobs, named by
+# `ci.github.build-setup` in dist-workspace.toml.
+#
+# The archives include `target/assets/perga.1` and `target/assets/completions/`,
+# and `dist` collects those paths in the *local* build job — before the
+# `extra-artifacts` command, which runs in the separate global job, has had a
+# chance to produce them. So they are produced here instead, in the same job
+# that assembles the archive.
+#
+# The build is for the host, not for the target being released: the man page and
+# the completions do not vary by target, and a cross-built binary cannot be run
+# to produce them.
+- name: Generate the man page and the shell completions
+  run: bash packaging/generate-assets.sh
