@@ -8,6 +8,7 @@ pub mod watch;
 use std::path::{Path, PathBuf};
 
 use crate::config::schema::FilesConfig;
+use crate::vault::index::{Index, IndexEvent, IndexHandle};
 use crate::vault::tree::Tree;
 use crate::vault::walker::{WalkHandle, WalkOptions};
 
@@ -18,8 +19,17 @@ pub struct Vault {
     pub root: PathBuf,
     /// The file tree.
     pub tree: Tree,
+    /// The wiki-link and backlink index.
+    pub index: Index,
+    /// Markdown files the walk found, with what the cache is checked against.
+    ///
+    /// Collected as the walk streams so that when it finishes the index knows
+    /// exactly which files changed without a second pass over the filesystem.
+    pub markdown: Vec<(PathBuf, Option<std::time::SystemTime>, u64)>,
     /// The running walk. Dropping it cancels the walk.
     walk: Option<WalkHandle>,
+    /// The running index build. Dropping it cancels the build.
+    build: Option<IndexHandle>,
 }
 
 impl Vault {
@@ -28,7 +38,10 @@ impl Vault {
         Vault {
             root: root.into(),
             tree: Tree::new(config),
+            index: Index::new(),
+            markdown: Vec::new(),
             walk: None,
+            build: None,
         }
     }
 
@@ -48,6 +61,21 @@ impl Vault {
     /// Stop any running walk.
     pub fn cancel_walk(&mut self) {
         self.walk = None;
+    }
+
+    /// Start building the index for the files the cache does not cover.
+    pub fn start_index(
+        &mut self,
+        stale: Vec<PathBuf>,
+        sink: impl Fn(IndexEvent) + Send + Sync + 'static,
+    ) {
+        self.build = None;
+        self.build = Some(index::spawn(self.root.clone(), stale, sink));
+    }
+
+    /// Stop any running index build.
+    pub fn cancel_index(&mut self) {
+        self.build = None;
     }
 
     /// Resolve a tree path against the vault root.
