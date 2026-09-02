@@ -5,7 +5,8 @@
 //! and the panic hook that guarantees the terminal is restored on every exit
 //! path.
 
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
 
@@ -18,6 +19,8 @@ use perga::app::{self, App, Message};
 use perga::cli::{Cli, Shell};
 use perga::config::keymap::Keymap;
 use perga::config::schema::UiConfig;
+use perga::doc::document::Document;
+use perga::doc::print;
 use perga::terminal;
 use perga::theme::Theme;
 
@@ -37,6 +40,17 @@ fn main() -> ExitCode {
         Err(err) => {
             eprintln!("perga: {err:#}");
             return ExitCode::from(EXIT_USAGE);
+        }
+    }
+
+    // Print mode never touches the terminal, so it is settled before the panic
+    // hook that exists to put the terminal back.
+    match print_mode(&cli) {
+        Ok(true) => return ExitCode::SUCCESS,
+        Ok(false) => {}
+        Err((err, code)) => {
+            eprintln!("perga: {err:#}");
+            return ExitCode::from(code);
         }
     }
 
@@ -81,8 +95,106 @@ fn generate(cli: &Cli) -> anyhow::Result<bool> {
     Ok(false)
 }
 
+/// What perga was asked to open.
+enum Target {
+    /// A directory, opened as the vault root.
+    Vault(PathBuf),
+    /// A file, opened with its parent directory as the vault root.
+    File { path: PathBuf, root: PathBuf },
+}
+
+impl Target {
+    /// Resolve the `PATH` argument.
+    fn resolve(path: Option<&Path>) -> anyhow::Result<Self> {
+        let path = path.unwrap_or(Path::new("."));
+
+        let metadata =
+            std::fs::metadata(path).with_context(|| format!("cannot open `{}`", path.display()))?;
+
+        if metadata.is_dir() {
+            return Ok(Target::Vault(path.to_path_buf()));
+        }
+
+        let root = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."))
+            .to_path_buf();
+
+        Ok(Target::File {
+            path: path.to_path_buf(),
+            root,
+        })
+    }
+}
+
+/// Render to stdout and exit, when asked to or when stdout is not a terminal.
+///
+/// Returns whether print mode fired. The error carries its own exit code,
+/// because a directory in print mode is a usage error rather than a runtime one.
+fn print_mode(cli: &Cli) -> Result<bool, (anyhow::Error, u8)> {
+    let implied = !std::io::stdout().is_terminal();
+    if !cli.print && !implied {
+        return Ok(false);
+    }
+
+    let target = Target::resolve(cli.path.as_deref()).map_err(|e| (e, EXIT_USAGE))?;
+
+    let path = match target {
+        Target::File { path, .. } => path,
+        Target::Vault(path) => {
+            // There is nothing to print for a directory, and silently picking a
+            // file out of it would be a guess.
+            let err = anyhow::anyhow!(
+                "`{}` is a directory; print mode needs a file",
+                path.display()
+            );
+            return Err((err, EXIT_USAGE));
+        }
+    };
+
+    let document = Document::load(&path)
+        .with_context(|| format!("cannot read `{}`", path.display()))
+        .map_err(|e| (e, EXIT_USAGE))?;
+
+    let mut theme = Theme::dark();
+    let colour = !no_color();
+    if !colour {
+        theme.strip_colors();
+    }
+
+    let width = print_width(cli);
+    let mut out = io::stdout().lock();
+
+    print::print(&document, &theme, width, colour, &mut out)
+        .context("writing to stdout")
+        .map_err(|e| (e, EXIT_RUNTIME))?;
+
+    Ok(true)
+}
+
+/// The width print mode renders at.
+///
+/// The terminal's when stdout is a TTY, otherwise `--wrap` if it was given,
+/// otherwise 80 columns.
+fn print_width(cli: &Cli) -> u16 {
+    if let Some(wrap) = cli.wrap.filter(|w| *w > 0) {
+        return wrap;
+    }
+
+    if std::io::stdout().is_terminal() {
+        if let Ok((width, _)) = crossterm::terminal::size() {
+            return width.max(1);
+        }
+    }
+
+    print::DEFAULT_WIDTH
+}
+
 /// Set up the terminal, run the event loop, and tear the terminal down again.
 fn run(cli: &Cli) -> anyhow::Result<u8> {
+    let target = Target::resolve(cli.path.as_deref())?;
+
     let mut ui_config = UiConfig::default();
     if cli.no_sidebar {
         ui_config.sidebar_visible = false;
@@ -98,10 +210,29 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
 
     let mut app = App::new(theme, Keymap::defaults(), ui_config);
 
+    match &target {
+        Target::Vault(root) => app.set_vault_root(root),
+        Target::File { path, root } => {
+            app.set_vault_root(root);
+            let document = Document::load(path)
+                .with_context(|| format!("cannot read `{}`", path.display()))?;
+            app.open(document);
+        }
+    }
+
     let (tx, rx) = unbounded();
     spawn_input_thread(tx.clone());
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
+
+    // Loading the syntax sets costs 50 to 100 ms, which is the whole
+    // first-frame budget, so it happens on its own thread and the code blocks
+    // drawn plain in the meantime are re-rendered when it lands.
+    let ready = tx.clone();
+    app.highlighter.spawn_load(move || {
+        let _ = ready.send(Message::SyntaxReady);
+    });
+
     drop(tx);
 
     let mut term = terminal::setup(app.mouse_capture).context("setting up the terminal")?;
