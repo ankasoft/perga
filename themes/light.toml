@@ -1,0 +1,70 @@
+name = "light"
+# A light syntect theme; the dark one is unreadable on a pale background.
+code_theme = "InspiredGitHub"
+
+# A genuinely light palette rather than an inversion of `dark`. Body text
+# (#1c1e26 on #fdfdfb) is 15.8:1, and no foreground listed here falls below
+# 4.5:1 against the surface it is drawn on.
+
+[ui]
+background      = { bg = "#fdfdfb" }
+border          = { fg = "#b4b0a8" }
+border_focused  = { fg = "#1a5fb4" }
+title           = { fg = "#1c1e26", bold = true }
+status_bar      = { fg = "#4a4d57", bg = "#eeece6" }
+status_mode     = { fg = "#fdfdfb", bg = "#1a5fb4", bold = true }
+status_warning  = { fg = "#8a5000" }
+status_error    = { fg = "#a51d2d" }
+selection       = { bg = "#dfe6f2" }
+scrollbar       = { fg = "#b4b0a8" }
+logo            = { fg = "#1a5fb4", bold = true }
+logo_subtitle   = { fg = "#6b6e78" }
+
+[tabs]
+active   = { fg = "#1c1e26", bg = "#dfe6f2", bold = true }
+inactive = { fg = "#6b6e78" }
+dirty    = { fg = "#8a5000" }
+
+[sidebar]
+directory     = { fg = "#1a5fb4", bold = true }
+file          = { fg = "#1c1e26" }
+file_active   = { fg = "#0f6b34", bold = true }
+file_other    = { fg = "#6b6e78" }
+mode_active   = { fg = "#fdfdfb", bg = "#1a5fb4", bold = true }
+mode_inactive = { fg = "#6b6e78" }
+match         = { fg = "#8a5000", bold = true }
+line_number   = { fg = "#8b8e98" }
+
+[markdown]
+h1 = { fg = "#a51d2d", bold = true }
+h2 = { fg = "#8a5000", bold = true }
+h3 = { fg = "#6b5300", bold = true }
+h4 = { fg = "#0f6b34", bold = true }
+h5 = { fg = "#1a5fb4", bold = true }
+h6 = { fg = "#6c3fa8", bold = true }
+text              = { fg = "#1c1e26" }
+emphasis          = { italic = true }
+strong            = { bold = true }
+strikethrough     = { crossed_out = true }
+blockquote        = { fg = "#4a4d57", italic = true }
+blockquote_bar    = { fg = "#b4b0a8" }
+code_inline       = { fg = "#8f3f71", bg = "#f0eee8" }
+code_block_bg     = { bg = "#f4f2ec" }
+link              = { fg = "#1a5fb4", underline = true }
+link_focused      = { fg = "#fdfdfb", bg = "#1a5fb4" }
+link_broken       = { fg = "#a51d2d", crossed_out = true }
+link_external     = { fg = "#00707a", underline = true }
+wikilink          = { fg = "#6c3fa8", underline = true }
+list_marker       = { fg = "#8a5000" }
+task_done         = { fg = "#0f6b34" }
+task_todo         = { fg = "#6b6e78" }
+table_border      = { fg = "#b4b0a8" }
+table_header      = { fg = "#1c1e26", bold = true }
+rule              = { fg = "#b4b0a8" }
+footnote          = { fg = "#00707a" }
+image_placeholder = { fg = "#00707a", italic = true }
+html              = { fg = "#6b6e78", dim = true }
+frontmatter       = { fg = "#6b6e78", dim = true }
+
+[hints]
+label = { fg = "#fdfdfb", bg = "#a51d2d", bold = true }

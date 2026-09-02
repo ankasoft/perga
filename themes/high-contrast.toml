@@ -1,0 +1,78 @@
+name = "high-contrast"
+# An ANSI-16 syntect theme, so fenced code does not reintroduce 256-colour
+# values the rest of this theme deliberately avoids.
+code_theme = "base16-ocean.dark"
+
+# ANSI-16 only: every colour here is one of the sixteen names, so this theme
+# renders identically on a terminal with no 256-colour or truecolour support
+# and follows whatever palette the user has configured there. Nothing in it
+# relies on colour alone — every distinction also carries bold, dim, underline,
+# or reverse video.
+#
+# Every key that `dark` gives a colour to is given one here too, including the
+# backgrounds. A theme file inherits what it does not mention, and a key left
+# out would quietly pull a truecolour value in from `dark` — which the test in
+# `src/theme/builtin.rs` exists to catch.
+
+[ui]
+background      = { bg = "black" }
+border          = { fg = "white" }
+border_focused  = { fg = "bright_white", bold = true }
+title           = { fg = "bright_white", bold = true }
+status_bar      = { fg = "bright_white", bg = "black" }
+status_mode     = { fg = "black", bg = "bright_white", bold = true }
+status_warning  = { fg = "bright_yellow", bold = true }
+status_error    = { fg = "bright_red", bold = true }
+selection       = { fg = "black", bg = "bright_white" }
+scrollbar       = { fg = "white" }
+logo            = { fg = "bright_white", bold = true }
+logo_subtitle   = { fg = "white" }
+
+[tabs]
+active   = { fg = "black", bg = "bright_white", bold = true }
+inactive = { fg = "white" }
+dirty    = { fg = "bright_yellow", bold = true }
+
+[sidebar]
+directory     = { fg = "bright_cyan", bold = true }
+file          = { fg = "bright_white" }
+file_active   = { fg = "bright_green", bold = true }
+file_other    = { fg = "white", dim = true }
+mode_active   = { fg = "black", bg = "bright_white", bold = true }
+mode_inactive = { fg = "white" }
+match         = { fg = "black", bg = "bright_yellow", bold = true }
+line_number   = { fg = "white", dim = true }
+
+[markdown]
+h1 = { fg = "bright_white", bold = true, underline = true }
+h2 = { fg = "bright_white", bold = true }
+h3 = { fg = "bright_cyan", bold = true }
+h4 = { fg = "bright_green", bold = true }
+h5 = { fg = "bright_yellow", bold = true }
+h6 = { fg = "bright_magenta", bold = true }
+text              = { fg = "bright_white" }
+emphasis          = { italic = true }
+strong            = { bold = true }
+strikethrough     = { crossed_out = true }
+blockquote        = { fg = "bright_white", italic = true }
+blockquote_bar    = { fg = "white" }
+code_inline       = { fg = "bright_magenta", bg = "black", bold = true }
+code_block_bg     = { bg = "black" }
+link              = { fg = "bright_cyan", underline = true }
+link_focused      = { fg = "black", bg = "bright_cyan", bold = true }
+link_broken       = { fg = "bright_red", crossed_out = true }
+link_external     = { fg = "bright_blue", underline = true }
+wikilink          = { fg = "bright_magenta", underline = true }
+list_marker       = { fg = "bright_yellow", bold = true }
+task_done         = { fg = "bright_green", bold = true }
+task_todo         = { fg = "white" }
+table_border      = { fg = "white" }
+table_header      = { fg = "bright_white", bold = true, underline = true }
+rule              = { fg = "white" }
+footnote          = { fg = "bright_blue" }
+image_placeholder = { fg = "bright_blue", italic = true }
+html              = { fg = "white", dim = true }
+frontmatter       = { fg = "white", dim = true }
+
+[hints]
+label = { fg = "black", bg = "bright_yellow", bold = true }
