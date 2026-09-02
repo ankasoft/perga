@@ -88,13 +88,14 @@ impl Widget for Viewport<'_> {
         };
 
         let focused_link = self.focused_link_placement();
+        let query = tab.find.as_ref().map(|find| find.query()).unwrap_or("");
 
         let clipped: Vec<Line<'static>> = self
             .lines
             .iter()
             .enumerate()
             .map(|(row, line)| {
-                let line = match focused_link {
+                let mut line = match focused_link {
                     // Restyled before clipping, so a focused link that is
                     // partly off the right-hand side is still marked on the
                     // part that shows.
@@ -103,6 +104,11 @@ impl Widget for Viewport<'_> {
                     }
                     _ => line.clone(),
                 };
+
+                if !query.is_empty() {
+                    line = highlight_matches(&line, query, theme.sidebar.r#match);
+                }
+
                 clip_line(&line, tab.hscroll, inner.width)
             })
             .collect();
@@ -199,6 +205,35 @@ pub fn clip_line(line: &Line<'static>, offset: u16, width: u16) -> Line<'static>
     }
 
     Line::from(out).style(line.style)
+}
+
+/// Restyle every occurrence of `query` in a rendered line.
+///
+/// Matching is against what is on screen rather than against the source: the
+/// reader is looking at rendered text, and a highlight landing on a different
+/// run of characters is worse than none at all. See `docs/decisions.md`.
+pub fn highlight_matches(
+    line: &Line<'static>,
+    query: &str,
+    style: ratatui::style::Style,
+) -> Line<'static> {
+    let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+    let found = crate::search::in_doc::matches_in_line(&text, query);
+
+    if found.is_empty() {
+        return line.clone();
+    }
+
+    // The ranges come back in byte offsets and `restyle` works in columns, so
+    // each one is converted before it is applied.
+    let mut out = line.clone();
+    for (start, end) in found {
+        let column = text[..start].width() as u16;
+        let width = text[start..end].width() as u16;
+        out = restyle(&out, column, width, style);
+    }
+
+    out
 }
 
 /// Restyle a run of columns within a line.

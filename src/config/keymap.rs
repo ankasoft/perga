@@ -459,20 +459,20 @@ pub fn default_bindings() -> Vec<BindingSpec> {
         ),
         // -- Sidebar -------------------------------------------------------
         b(
-            A::TreeDown,
+            A::SidebarDown,
             Sidebar,
             &["j", "down"],
             "Move the selection down",
         ),
-        b(A::TreeUp, Sidebar, &["k", "up"], "Move the selection up"),
+        b(A::SidebarUp, Sidebar, &["k", "up"], "Move the selection up"),
         b(
-            A::TreeExpandOrOpen,
+            A::SidebarActivate,
             Sidebar,
             &["l", "right", "enter"],
-            "Expand a directory, or open a file",
+            "Open the selection",
         ),
         b(
-            A::TreeCollapseOrParent,
+            A::SidebarBack,
             Sidebar,
             &["h", "left"],
             "Collapse a directory, or go to its parent",
@@ -867,7 +867,7 @@ mod tests {
         );
         assert_eq!(
             keymap.resolve(KeyContext::Sidebar, chord("j")),
-            Resolution::Action(Action::TreeDown)
+            Resolution::Action(Action::SidebarDown)
         );
     }
 

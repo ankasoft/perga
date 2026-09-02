@@ -125,18 +125,30 @@ pub enum Action {
     OpenQuickSwitcher,
     /// Open the incremental find-in-document bar.
     OpenFindInDocument,
+    /// Edit the find query. Only reachable while the find bar is open.
+    FindEdit(TextEdit),
+    /// Step to the next match.
+    FindNext,
+    /// Step to the previous match.
+    FindPrev,
+    /// Close the find bar and clear its highlighting.
+    CloseFind,
     /// Open the project-wide search prompt.
     OpenProjectSearch,
 
-    // -- Sidebar tree ------------------------------------------------------
+    // -- Sidebar -----------------------------------------------------------
+    //
+    // The four movement actions are shared by every sidebar mode; what they do
+    // depends on which mode is showing. The rest belong to the files mode.
     /// Move the sidebar selection down.
-    TreeDown,
+    SidebarDown,
+    /// Activate the selection: expand a directory, open a file, or jump to a
+    /// heading, a search hit, or a link.
+    SidebarActivate,
     /// Move the sidebar selection up.
-    TreeUp,
-    /// Expand the selected directory, or open the selected file.
-    TreeExpandOrOpen,
-    /// Collapse the selected directory, or move to its parent.
-    TreeCollapseOrParent,
+    SidebarUp,
+    /// Step back: collapse a directory, or move to its parent.
+    SidebarBack,
     /// Show or hide dotted entries in the tree.
     TreeToggleHidden,
     /// Show or hide non-Markdown files in the tree.

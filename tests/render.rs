@@ -71,6 +71,25 @@ fn link_hint_mode() {
     insta::assert_snapshot!(frame(&mut app, 120, 40));
 }
 
+/// The outline mode, and the find bar with matches highlighted behind it.
+#[test]
+fn outline_and_find() {
+    let mut app = common::app_with("anchors.md", 120, 40);
+    frame(&mut app, 120, 40);
+    app.update(Action::SetSidebarMode(
+        perga::ui::sidebar::SidebarMode::Outline,
+    ));
+    insta::assert_snapshot!("sidebar_outline_populated", frame(&mut app, 120, 40));
+
+    app.update(Action::OpenFindInDocument);
+    for c in "section".chars() {
+        app.update(Action::FindEdit(
+            perga::ui::overlay::prompt::TextEdit::Insert(c),
+        ));
+    }
+    insta::assert_snapshot!("find_bar", frame(&mut app, 120, 40));
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);

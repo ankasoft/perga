@@ -177,9 +177,12 @@ fn highlight(name: &str, filter: Option<&str>, style: Style, matched: Style) -> 
 
 /// Which row the visible window starts at.
 ///
+/// Shared with the outline mode: both are a scrolling list with one selected
+/// row, and two implementations of that would drift.
+///
 /// The selection is kept on screen with as little movement as possible: the
 /// list only scrolls when the selection would otherwise leave it.
-fn scroll_offset(selected: Option<usize>, total: usize, height: usize) -> usize {
+pub fn scroll_offset(selected: Option<usize>, total: usize, height: usize) -> usize {
     let Some(selected) = selected else { return 0 };
     if height == 0 || total <= height {
         return 0;

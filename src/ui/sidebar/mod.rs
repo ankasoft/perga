@@ -13,6 +13,7 @@ use ratatui::widgets::{Block, Clear, Paragraph, Widget};
 
 use crate::app::{App, Focus};
 use crate::ui::sidebar::files::FilesMode;
+use crate::ui::sidebar::outline::OutlineMode;
 
 /// Which of the four sidebar modes is showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
@@ -115,6 +116,10 @@ impl<'a> SidebarPane<'a> {
         let text = match self.app.sidebar.mode {
             SidebarMode::Files if tree.complete => format!("{} entries", tree.entries),
             SidebarMode::Files => format!("{} entries, scanning…", tree.entries),
+            SidebarMode::Outline => {
+                let count = self.app.tab().doc.as_ref().map_or(0, |d| d.outline.len());
+                format!("{count} headings")
+            }
             other => other.label().to_string(),
         };
 
@@ -178,9 +183,11 @@ impl Widget for SidebarPane<'_> {
             ..below
         };
 
-        // The other three modes arrive with the features behind them.
-        if self.app.sidebar.mode == SidebarMode::Files {
-            FilesMode::new(self.app).render(content, buf);
+        match self.app.sidebar.mode {
+            SidebarMode::Files => FilesMode::new(self.app).render(content, buf),
+            SidebarMode::Outline => OutlineMode::new(self.app).render(content, buf),
+            // The other two modes arrive with the features behind them.
+            SidebarMode::Search | SidebarMode::Links => {}
         }
     }
 }

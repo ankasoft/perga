@@ -51,7 +51,7 @@ fn a_gitignored_directory_is_not_in_the_tree() {
 fn non_markdown_files_appear_only_when_asked_for() {
     let mut app = vault_app(120, 40);
     app.update(Action::FocusNext);
-    app.update(Action::TreeExpandOrOpen); // .github
+    app.update(Action::SidebarActivate); // .github
 
     // The fixture's `.gitignore` is not Markdown.
     assert!(!rows(&app).contains(&".gitignore".to_string()));
@@ -78,20 +78,20 @@ fn walking_into_a_directory_and_opening_a_file() {
     assert_eq!(app.focus, Focus::Sidebar);
 
     // Down to `docs`, into it, and on to `api/auth.md`.
-    app.update(Action::TreeDown); // .github
-    app.update(Action::TreeDown); // docs
-    app.update(Action::TreeExpandOrOpen);
+    app.update(Action::SidebarDown); // .github
+    app.update(Action::SidebarDown); // docs
+    app.update(Action::SidebarActivate);
     assert_eq!(selected(&app), Some(PathBuf::from("docs")));
 
-    app.update(Action::TreeExpandOrOpen); // steps into the open directory
+    app.update(Action::SidebarActivate); // steps into the open directory
     assert_eq!(selected(&app), Some(PathBuf::from("docs/api")));
 
-    app.update(Action::TreeExpandOrOpen); // expands `api`
-    app.update(Action::TreeExpandOrOpen); // steps to its first child
+    app.update(Action::SidebarActivate); // expands `api`
+    app.update(Action::SidebarActivate); // steps to its first child
     assert_eq!(selected(&app), Some(PathBuf::from("docs/api/ambiguous.md")));
 
-    app.update(Action::TreeDown);
-    app.update(Action::TreeExpandOrOpen);
+    app.update(Action::SidebarDown);
+    app.update(Action::SidebarActivate);
 
     let doc = app.tab().doc.as_ref().expect("a document is open");
     assert_eq!(doc.path, vault().join("docs/api/auth.md"));
@@ -102,11 +102,11 @@ fn collapsing_walks_back_out_of_a_directory() {
     let mut app = vault_app(120, 40);
     app.vault.tree.reveal(Path::new("docs/api/auth.md"));
 
-    app.update(Action::TreeCollapseOrParent);
+    app.update(Action::SidebarBack);
     assert_eq!(selected(&app), Some(PathBuf::from("docs/api")));
 
-    app.update(Action::TreeCollapseOrParent); // closes `api`
-    app.update(Action::TreeCollapseOrParent); // up to `docs`
+    app.update(Action::SidebarBack); // closes `api`
+    app.update(Action::SidebarBack); // up to `docs`
     assert_eq!(selected(&app), Some(PathBuf::from("docs")));
 }
 

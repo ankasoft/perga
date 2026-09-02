@@ -123,13 +123,45 @@ fn translate_text_line(chord: KeyChord) -> Vec<Action> {
         KeyCode::End => edit(TextEdit::End),
         // The selection still moves while the filter is being typed, so the
         // user can type and choose without leaving the line.
-        KeyCode::Down => vec![Action::TreeDown],
-        KeyCode::Up => vec![Action::TreeUp],
+        KeyCode::Down => vec![Action::SidebarDown],
+        KeyCode::Up => vec![Action::SidebarUp],
         KeyCode::Char('u') if ctrl => edit(TextEdit::Clear),
         KeyCode::Char('w') if ctrl => edit(TextEdit::DeleteWordBack),
         KeyCode::Char(c) if !ctrl && !chord.modifiers.contains(KeyModifiers::ALT) => {
             edit(TextEdit::Insert(c))
         }
+        _ => Vec::new(),
+    }
+}
+
+/// Keys typed into the find bar.
+///
+/// Like the tree filter, the bar owns every key it can use; scrolling the
+/// document while it is open would take the reader away from the match they
+/// are looking at.
+fn translate_find_key(chord: KeyChord) -> Vec<Action> {
+    let edit = |edit| vec![Action::FindEdit(edit)];
+    let ctrl = chord.modifiers.contains(KeyModifiers::CONTROL);
+
+    match chord.code {
+        KeyCode::Esc => vec![Action::CloseFind],
+        KeyCode::Enter if chord.modifiers.contains(KeyModifiers::SHIFT) => vec![Action::FindPrev],
+        KeyCode::Enter => vec![Action::FindNext],
+        // `Shift+Enter` is not reportable on every terminal, so the arrows and
+        // `Ctrl+N`/`Ctrl+P` cycle too.
+        KeyCode::Down => vec![Action::FindNext],
+        KeyCode::Up => vec![Action::FindPrev],
+        KeyCode::Char('n') if ctrl => vec![Action::FindNext],
+        KeyCode::Char('p') if ctrl => vec![Action::FindPrev],
+        KeyCode::Backspace => edit(TextEdit::Backspace),
+        KeyCode::Delete => edit(TextEdit::Delete),
+        KeyCode::Left => edit(TextEdit::Left),
+        KeyCode::Right => edit(TextEdit::Right),
+        KeyCode::Home => edit(TextEdit::Home),
+        KeyCode::End => edit(TextEdit::End),
+        KeyCode::Char('u') if ctrl => edit(TextEdit::Clear),
+        KeyCode::Char('w') if ctrl => edit(TextEdit::DeleteWordBack),
+        KeyCode::Char(c) if !chord.modifiers.intersects(CTRL_OR_ALT) => edit(TextEdit::Insert(c)),
         _ => Vec::new(),
     }
 }
@@ -169,6 +201,7 @@ fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
             }
             _ => Vec::new(),
         },
+        Overlay::Find => translate_find_key(chord),
         Overlay::Hints { links, typed } => {
             let count = links.len();
 
@@ -274,7 +307,7 @@ mod tests {
         assert_eq!(app.focus, Focus::Sidebar);
         assert_eq!(
             press(&mut app, KeyCode::Char('j'), KeyModifiers::NONE),
-            vec![Action::TreeDown]
+            vec![Action::SidebarDown]
         );
     }
 

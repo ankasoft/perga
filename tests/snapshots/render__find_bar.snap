@@ -2,43 +2,43 @@
 source: tests/render.rs
 expression: "frame(&mut app, 120, 40)"
 ---
- perga
+ perga anchors.md                                                                                                  1/26
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
-│files search OUTLINE links    ││                                                                                      │
-│0 headings                    ││                                                                                      │
-│no document                   ││                                                                                      │
+│files search OUTLINE links    ││# Anchors                                                                             │
+│4 headings                    ││                                                                                      │
+│Anchors                       ││A link to the second section stays in this document, and one to Kurulum Kılavuzu      │
+│  The first section           ││proves the slug keeps its Unicode letters.                                            │
+│  The second section          ││                                                                                      │
+│  Kurulum Kılavuzu            ││## The first section                                                                  │
+│                              ││                                                                                      │
+│                              ││Prose, so that the sections are far enough apart for a jump to be visible in the      │
+│                              ││scroll offset.                                                                        │
+│                              ││                                                                                      │
+│                              ││Filler so the second section is below the fold at every test size. Filler so the      │
+│                              ││second section is below the fold at every test size. Filler so the second section is  │
+│                              ││below the fold at every test size. Filler so the second section is below the fold at  │
+│                              ││every test size. Filler so the second section is below the fold at every test size.   │
+│                              ││Filler so the second section is below the fold at every test size. Filler so the      │
+│                              ││second section is below the fold at every test size. Filler so the second section is  │
+│                              ││below the fold at every test size.                                                    │
+│                              ││                                                                                      │
+│                              ││## The second section                                                                 │
+│                              ││                                                                                      │
+│                              ││The target of the anchor above.                                                       │
+│                              ││                                                                                      │
+│                              ││## Kurulum Kılavuzu                                                                   │
+│                              ││                                                                                      │
+│                              ││A heading whose slug a naive ASCII filter would mangle.                               │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
-│                              ││                       ██████  ███████ ██████   ██████   █████                        │
-│                              ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
-│                              ││                       ██████  █████   ██████  ██   ███ ███████                       │
-│                              ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
-│                              ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
-│                              ││                                                                                      │
-│                              ││                                      perga 0.1.0                                     │
-│                              ││                                                                                      │
-│                              ││                                Ctrl+O   find a document                              │
-│                              ││                                 Ctrl+B   toggle sidebar                              │
-│                              ││                                     ?   all keybindings                              │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
+│                              ││/section                                                                         1/13 │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help

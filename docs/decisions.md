@@ -452,3 +452,53 @@ The tab bar and the quit prompt both need to know whether a tab that is *not*
 the active one has unsaved edits. Keeping the flag on `Tab` means neither has to
 reach into an editor state that only exists while a tab is being edited. M9
 sets it; M5 draws it.
+
+## M6 — Outline mode and in-document find
+
+### D45: the sidebar movement actions are shared by every mode
+
+`tree_down` and `tree_expand_or_open` were M1 names for keys that turned out to
+belong to the sidebar rather than to the tree. They are now `sidebar_down`,
+`sidebar_up`, `sidebar_activate`, and `sidebar_back`, dispatched by whichever
+mode is showing; the toggles and the filter kept their `tree_` names because
+they really are the files mode's. Renamed rather than shadowed: two actions
+bound to `j` in one context is exactly the conflict Section 12 warns about.
+
+### D46: selection is per mode
+
+Moving down the outline must not move the tree cursor underneath it, so the
+outline keeps its own selection index and the tree keeps its own selected node.
+
+### D47: the highlighted heading and the selected heading are different things
+
+The outline highlights the heading the reader is *inside* — the last one whose
+rendered line is at or above the top of the viewport, which is what "the
+section I am reading" means when a section is taller than the screen — and it
+separately marks the heading the reader has *selected* with the keyboard. One
+moves with the scroll position, the other with `j` and `k`.
+
+### D48: find counts in the source and highlights in the rendered text
+
+A match needs a byte offset to be scrolled to, through the same offset↔line map
+everything else uses, so matching runs over the document source. The
+highlighting runs over the rendered text of the visible lines instead, because
+the reader is looking at rendered text and a highlight landing on a different
+run of characters is worse than none.
+
+The two can disagree: a query containing Markdown punctuation — `](`, `**` —
+counts in the source and highlights nowhere. The alternative is measuring the
+whole document before the first search can report a count, which costs more
+than the case is worth.
+
+### D49: matching folds case per character, not per string
+
+`str::to_lowercase` can change a string's length: `İ` folds to two characters.
+Searching a folded copy and reusing its offsets against the original would put
+a match in the wrong place in a Turkish document, so offsets are recovered by
+folding character by character.
+
+### D50: typing another character keeps the reader where they are
+
+An incremental search that jumps back to the first match on every keystroke
+fights the reader as they narrow a query. After a refresh the current match
+becomes the nearest one at or after where they already were.

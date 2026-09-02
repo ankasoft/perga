@@ -17,6 +17,7 @@ use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
 use crate::doc::links;
 use crate::doc::render::{RenderedDocument, Renderer};
+use crate::search::in_doc::FindState;
 use crate::terminal::{self, Tui};
 use crate::theme::Theme;
 use crate::ui;
@@ -139,6 +140,9 @@ pub struct Tab {
     pub history: History,
     /// The link `Enter` would follow, as an index into the document's links.
     pub focused_link: Option<usize>,
+    /// This tab's find state, kept when the bar closes so `Ctrl+F` reopens
+    /// where the reader left off.
+    pub find: Option<FindState>,
     /// Whether the buffer has edits that are not on disk.
     ///
     /// Owned by the tab rather than by the editor so that the tab bar and the
@@ -255,6 +259,11 @@ pub struct Sidebar {
     /// Separate from the filter the tree is applying: closing the line keeps
     /// the filter, and cancelling it clears both.
     pub filter: Option<TextInput>,
+    /// Which heading the outline mode has selected.
+    ///
+    /// Selection is per mode: moving down the outline must not move the tree
+    /// cursor underneath it.
+    pub outline_selected: usize,
 }
 
 /// How prominent a status message is.
@@ -297,6 +306,9 @@ pub enum Overlay {
         /// How far the reference is scrolled.
         scroll: u16,
     },
+    /// The find bar. The state itself lives on the tab, which is what makes
+    /// find per tab; this only says the bar has focus.
+    Find,
     /// Link hint mode: every visible link wears a label.
     Hints {
         /// The links wearing labels, in reading order.
@@ -355,6 +367,7 @@ impl App {
             width: ui.sidebar_width,
             mode: ui.sidebar_default_mode,
             filter: None,
+            outline_selected: 0,
         };
         let mouse_capture = ui.mouse;
 
@@ -553,11 +566,11 @@ impl App {
             }
             Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
 
-            // -- Sidebar tree ---------------------------------------------
-            Action::TreeDown => self.vault.tree.move_selection(1),
-            Action::TreeUp => self.vault.tree.move_selection(-1),
-            Action::TreeExpandOrOpen => self.tree_expand_or_open(),
-            Action::TreeCollapseOrParent => self.vault.tree.collapse_selected(),
+            // -- Sidebar ---------------------------------------------------
+            Action::SidebarDown => self.move_sidebar_selection(1),
+            Action::SidebarUp => self.move_sidebar_selection(-1),
+            Action::SidebarActivate => self.activate_sidebar_selection(),
+            Action::SidebarBack => self.sidebar_back(),
             Action::TreeToggleHidden => {
                 self.vault.tree.toggle_hidden();
                 let state = if self.vault.tree.include_hidden {
@@ -585,6 +598,13 @@ impl App {
                 self.vault.tree.set_filter(None);
             }
             Action::OpenPath(path) => self.open_path(&path),
+
+            // -- Find in document -------------------------------------------
+            Action::OpenFindInDocument => self.open_find(),
+            Action::FindEdit(edit) => self.edit_find(edit),
+            Action::FindNext => self.step_find(true),
+            Action::FindPrev => self.step_find(false),
+            Action::CloseFind => self.close_find(),
 
             // -- Tabs ------------------------------------------------------
             Action::NewTab => self.new_tab(),
@@ -1061,10 +1081,167 @@ impl App {
             .collect()
     }
 
+    // -- Sidebar dispatch ---------------------------------------------------
+
+    /// Move the selection in whichever sidebar mode is showing.
+    fn move_sidebar_selection(&mut self, delta: isize) {
+        match self.sidebar.mode {
+            SidebarMode::Files => self.vault.tree.move_selection(delta),
+            SidebarMode::Outline => {
+                let count = self.tab().doc.as_ref().map_or(0, |doc| doc.outline.len());
+                if count == 0 {
+                    return;
+                }
+                let at = self.sidebar.outline_selected.min(count - 1) as isize;
+                self.sidebar.outline_selected = (at + delta).clamp(0, count as isize - 1) as usize;
+            }
+            // The other two modes arrive with the features behind them.
+            SidebarMode::Search | SidebarMode::Links => {}
+        }
+    }
+
+    /// Activate the selection in whichever sidebar mode is showing.
+    fn activate_sidebar_selection(&mut self) {
+        match self.sidebar.mode {
+            SidebarMode::Files => self.tree_expand_or_open(),
+            SidebarMode::Outline => self.jump_to_selected_heading(),
+            SidebarMode::Search | SidebarMode::Links => {}
+        }
+    }
+
+    /// Step back in whichever sidebar mode is showing.
+    fn sidebar_back(&mut self) {
+        if self.sidebar.mode == SidebarMode::Files {
+            self.vault.tree.collapse_selected();
+        }
+    }
+
+    // -- Outline ------------------------------------------------------------
+
+    /// Which heading the reader is currently inside.
+    ///
+    /// The last heading whose rendered line is at or above the top of the
+    /// viewport, which is what "the section I am reading" means when a section
+    /// is taller than the screen.
+    pub fn current_heading(&self) -> usize {
+        let tab = self.tab();
+        let Some(doc) = tab.doc.as_ref() else {
+            return 0;
+        };
+
+        let map = tab.layout.line_map();
+        let mut current = 0;
+
+        for (index, heading) in doc.outline.iter().enumerate() {
+            match map.line_of_offset(heading.offset) {
+                Some(line) if line <= tab.scroll => current = index,
+                _ => break,
+            }
+        }
+
+        current
+    }
+
+    /// Scroll the viewport to the heading the outline has selected.
+    fn jump_to_selected_heading(&mut self) {
+        let at = self.sidebar.outline_selected;
+        let slug = self
+            .tab()
+            .doc
+            .as_ref()
+            .and_then(|doc| doc.outline.get(at))
+            .map(|heading| heading.slug.clone());
+
+        // The same slug lookup anchors use: one implementation, so an anchor
+        // and the outline can never disagree about where a heading is.
+        if let Some(slug) = slug {
+            self.jump_to_anchor(&slug);
+        }
+    }
+
+    // -- Find in document ---------------------------------------------------
+
+    /// Open the find bar, keeping whatever was searched for last.
+    fn open_find(&mut self) {
+        if self.tab().doc.is_none() {
+            return;
+        }
+
+        let index = self.active_tab;
+        let find = self.tabs[index].find.get_or_insert_with(FindState::new);
+        // Reopening selects the whole query, in the sense that typing replaces
+        // it: the common case is a new search, not an edit of the old one.
+        find.input.apply(TextEdit::End);
+
+        self.overlay = Some(Overlay::Find);
+        self.focus = Focus::Overlay;
+    }
+
+    /// Apply one edit to the query and re-run the search.
+    fn edit_find(&mut self, edit: TextEdit) {
+        let index = self.active_tab;
+        let Some(source) = self.tabs[index].doc.as_ref().map(|d| d.source.clone()) else {
+            return;
+        };
+        let Some(find) = &mut self.tabs[index].find else {
+            return;
+        };
+
+        find.input.apply(edit);
+        find.refresh(&source);
+
+        if let Some(offset) = find.current_offset() {
+            self.scroll_to_offset(offset);
+        }
+    }
+
+    /// Step to the next or previous match.
+    fn step_find(&mut self, forward: bool) {
+        let index = self.active_tab;
+        let Some(find) = &mut self.tabs[index].find else {
+            return;
+        };
+
+        let Some(offset) = find.step(forward) else {
+            self.status.set("No matches", Severity::Info);
+            return;
+        };
+
+        self.scroll_to_offset(offset);
+    }
+
+    /// Close the find bar and clear its highlighting.
+    fn close_find(&mut self) {
+        self.tabs[self.active_tab].find = None;
+        if self.overlay == Some(Overlay::Find) {
+            self.close_overlay();
+        }
+    }
+
+    /// Bring a source offset into view, moving as little as possible.
+    fn scroll_to_offset(&mut self, offset: usize) {
+        let height = usize::from(self.page());
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+        let Some(line) = tab.layout.line_of_offset(doc, &renderer, offset) else {
+            return;
+        };
+
+        if line < tab.scroll {
+            tab.scroll = line;
+        } else if line >= tab.scroll + height {
+            tab.scroll = line.saturating_sub(height / 2);
+        }
+    }
+
     // -- Tabs --------------------------------------------------------------
 
     /// Open a new tab on the welcome screen and switch to it.
     fn new_tab(&mut self) {
+        self.leave_active_tab();
+
         if self.tabs.len() >= MAX_TABS {
             self.status.set(
                 format!("{MAX_TABS} tabs is the maximum; reusing this one"),
@@ -1086,6 +1263,8 @@ impl App {
             return;
         }
 
+        self.leave_active_tab();
+
         self.tabs.remove(self.active_tab);
         // Closing a tab lands on the one to its left, which is where the eye
         // already is; closing the first lands on the new first.
@@ -1100,8 +1279,20 @@ impl App {
             return;
         }
 
+        self.leave_active_tab();
+
         self.active_tab = (self.active_tab as isize + delta).rem_euclid(count) as usize;
         self.reveal_active_document();
+    }
+
+    /// Tidy up whatever belongs to the tab the reader is leaving.
+    ///
+    /// The find bar shows the *active* tab's state, so it does not follow the
+    /// reader to a tab that was not searching for anything.
+    fn leave_active_tab(&mut self) {
+        if self.overlay == Some(Overlay::Find) {
+            self.close_overlay();
+        }
     }
 
     /// Open a document in a new tab without leaving the current one.
@@ -1255,6 +1446,14 @@ impl App {
     }
 
     fn close_overlay(&mut self) {
+        // Closing the find bar clears its highlighting, which is what `Esc`
+        // means there; the query survives so `Ctrl+F` reopens it.
+        if self.overlay == Some(Overlay::Find) {
+            if let Some(find) = &mut self.tabs[self.active_tab].find {
+                find.current = None;
+            }
+        }
+
         self.overlay = None;
         self.focus = if self.sidebar.visible
             && self.frames().sidebar_placement == SidebarPlacement::Overlaid
