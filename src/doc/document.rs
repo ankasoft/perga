@@ -11,6 +11,7 @@ use std::time::SystemTime;
 
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
+use crate::doc::links::{self, Link};
 use crate::doc::outline::{Heading, Slugger};
 
 /// The byte-order mark, which some editors write and which must survive a save.
@@ -162,6 +163,8 @@ pub struct Document {
     pub blocks: Vec<Block>,
     /// Headings, in document order, with unique slugs.
     pub outline: Vec<Heading>,
+    /// Links, in reading order, with the byte range each came from.
+    pub links: Vec<Link>,
 }
 
 impl Document {
@@ -211,6 +214,7 @@ impl Document {
         let frontmatter = parse_frontmatter(&source);
         let body_start = frontmatter.range.as_ref().map_or(0, |r| r.end);
         let (blocks, outline) = parse_blocks(&source, body_start);
+        let links = links::extract(&source);
 
         Document {
             content_hash: hash_of(&source),
@@ -223,6 +227,7 @@ impl Document {
             frontmatter,
             blocks,
             outline,
+            links,
         }
     }
 
@@ -250,6 +255,12 @@ impl Document {
             .title()
             .or_else(|| self.path.file_stem().and_then(|s| s.to_str()))
             .unwrap_or("untitled")
+    }
+
+    /// The directory the document lives in, which relative links resolve
+    /// against.
+    pub fn dir(&self) -> &Path {
+        self.path.parent().unwrap_or(Path::new("."))
     }
 
     /// The heading with this slug, if the document has one.
