@@ -5,20 +5,20 @@ expression: "frame(&mut app, 120, 40)"
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │files SEARCH outline links    ││                                                                                      │
-│no search yet                 ││                                                                                      │
-│press Ctrl+G to search the vau││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                       ██████  ███████ ██████   ██████   █████                        │
-│                              ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
-│                              ││                       ██████  █████   ██████  ██   ███ ███████                       │
-│                              ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
-│                              ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
-│                              ││                                                                                      │
-│                              ││                                      perga 0.1.0                                     │
+│9 hits in 7 ms                ││                                                                                      │
+│docs/api/auth.md              ││                                                                                      │
+│    3 This service uses Bearer││                                                                                      │
+│    4 walkthrough, and [[Token││                                                                                      │
+│    6 ## Obtaining a token    ││                                                                                      │
+│    9 curl -X POST /auth/token││                                                                                      │
+│docs/api/webhooks.md          ││                                                                                      │
+│    3 See [auth](auth.md#obtai││                       ██████  ███████ ██████   ██████   █████                        │
+│docs/guides/Token Rotation.md ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
+│    1 # Token Rotation        ││                       ██████  █████   ██████  ██   ███ ███████                       │
+│wiki.md                       ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
+│    3 A plain [[Token Rotation││                       ██      ███████ ██   ██  ██████  ██   ██                       │
+│    5 [[docs/guides/Token Rota││                                                                                      │
+│    6 [[token rotation]].     ││                                      perga 0.1.0                                     │
 │                              ││                                                                                      │
 │                              ││                                Ctrl+O   find a document                              │
 │                              ││                                 Ctrl+B   toggle sidebar                              │

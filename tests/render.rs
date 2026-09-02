@@ -123,6 +123,29 @@ fn disambiguation_overlay() {
     insta::assert_snapshot!(frame(&mut app, 120, 40));
 }
 
+/// The search mode with results, the search prompt, and the quick switcher.
+#[test]
+fn search_and_switcher() {
+    let mut app = common::vault_app(120, 40);
+    app.search_now("token");
+    // Pinned, so the snapshot does not change with the machine it ran on.
+    app.search.elapsed = Some(std::time::Duration::from_millis(7));
+    frame(&mut app, 120, 40);
+    insta::assert_snapshot!("sidebar_search_populated", frame(&mut app, 120, 40));
+
+    app.update(Action::OpenProjectSearch);
+    insta::assert_snapshot!("search_prompt", frame(&mut app, 120, 40));
+
+    app.update(Action::Escape);
+    app.update(Action::OpenQuickSwitcher);
+    for c in "auth".chars() {
+        app.update(Action::SwitcherEdit(
+            perga::ui::overlay::prompt::TextEdit::Insert(c),
+        ));
+    }
+    insta::assert_snapshot!("quick_switcher", frame(&mut app, 120, 40));
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);

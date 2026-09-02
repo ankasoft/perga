@@ -556,3 +556,46 @@ being added to make the old name work.
 The disambiguation overlay and the quick switcher of Section 9.7 are the same
 shape — a title, a list, one selected row — so they share `ui::overlay::switcher`
 rather than growing two implementations that drift apart.
+
+## M8 — Search
+
+### D58: the search walks the vault itself
+
+The searcher runs its own `ignore` walk rather than reading the tree the
+sidebar holds. The tree is main-thread state and the search is not on the main
+thread; sharing it would need a lock on every frame. Both walks use the same
+`WalkOptions`, so search and tree agree about what is in the vault — including
+the ignore rules — without either waiting on the other.
+
+### D59: a new search cancels the old one by dropping its handle
+
+`SearchHandle` cancels on drop, and starting a search replaces the handle. A
+reader retyping a query does not accumulate threads: each one unwinds out of
+`grep`'s own iteration at the next line it reads, which is what the thread-leak
+test in `tests/search.rs` asserts.
+
+### D60: fuzzy matching runs on the main thread
+
+10,000 paths is a few hundred kilobytes and scores in well under a frame.
+`nucleo`'s own worker pool would buy nothing at that size and would make the
+switcher's results lag the keystrokes that produced them. The `Matcher` is kept
+between keystrokes for its scratch buffers.
+
+### D61: an empty switcher shows recents, not the vault
+
+Section 8.3 asks for the recent list on an empty query. `Fuzzy::search`
+therefore returns nothing for an empty query rather than "everything,
+unordered" — the two are different answers and only one of them is useful.
+
+### D62: the search state belongs to the window, not to a tab
+
+Section 8.2 describes the search mode as showing "the last project-wide
+search". One set of results the whole window shares, unlike find-in-document,
+which is per tab because it is about the document in front of the reader.
+
+### D63: `/pattern/` turns on regex for one search
+
+A prompt wrapper rather than a mode: the configured `search.regex` decides the
+default, and a reader who wants one regular expression writes it between
+slashes without changing their configuration. An invalid pattern is reported in
+the sidebar and the previous results stay put.
