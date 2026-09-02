@@ -140,6 +140,12 @@ pub fn walk(root: &Path, options: WalkOptions, cancelled: &AtomicBool, sink: &im
         .parents(options.respect_gitignore)
         .follow_links(options.follow_symlinks)
         .filter_entry(|entry| !is_excluded(entry.file_name()))
+        // Entries come back in a fixed order rather than whatever order the
+        // filesystem happens to return them in. The tree sorts what it
+        // receives regardless, but the *search* reports hits in walk order,
+        // and results that differ between two machines with the same vault
+        // are results nobody can reproduce or snapshot.
+        .sort_by_file_path(Path::cmp)
         .build();
 
     let mut batch = Vec::with_capacity(BATCH);
@@ -238,6 +244,19 @@ mod tests {
             entries.into_inner().unwrap(),
             finished.into_inner().unwrap(),
         )
+    }
+
+    #[test]
+    fn the_walk_is_in_the_same_order_every_time() {
+        let (first, _) = collect(&fixture_vault(), WalkOptions::default());
+        let (second, _) = collect(&fixture_vault(), WalkOptions::default());
+
+        assert_eq!(first, second);
+
+        // ...and that order is by path, so it is the same on any filesystem.
+        let mut sorted = first.clone();
+        sorted.sort_by(|a, b| a.path.cmp(&b.path));
+        assert_eq!(first, sorted);
     }
 
     #[test]

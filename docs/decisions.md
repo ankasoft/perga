@@ -321,6 +321,19 @@ exactly the vaults where it is least visible — at the cost of a second channel
 and a harder cancellation story. Revisit if a vault is ever measured where the
 tree is still filling in seconds after start-up.
 
+### D27a: the walk is ordered by path
+
+Found by CI: `tests/render.rs`'s search-results snapshot passed on the
+development machine and failed on a GitHub runner, because `ignore` yields
+entries in whatever order the filesystem returns them and the search reports
+hits in walk order.
+
+The tree sorts what it receives regardless, so this never showed there — but
+search results that differ between two machines looking at the same vault are
+results nobody can reproduce, quite apart from being unsnapshottable.
+`sort_by_file_path` costs a sort per directory, which the walk is already
+reading in full.
+
 ### D28: `require_git(false)`
 
 A notes vault is frequently not a git repository, and `ignore` will not apply a
