@@ -1278,4 +1278,58 @@ mod tests {
             );
         }
     }
+
+    // -- The shipped reference ---------------------------------------------
+
+    /// Section 12 says `docs/keybindings.md` and the help overlay come from
+    /// one source of truth. The overlay is generated from the table; this is
+    /// what keeps the page honest.
+    #[test]
+    fn the_keybindings_page_lists_every_action_and_binding() {
+        let page = include_str!("../../docs/keybindings.md");
+
+        for spec in default_bindings() {
+            let name = action_name(&spec.action);
+            assert!(
+                page.contains(&format!("`{name}`")),
+                "docs/keybindings.md does not mention the action `{name}`"
+            );
+
+            for key in spec.keys {
+                let sequence = KeySequence::parse(key).expect("a default binding parses");
+                assert!(
+                    page.contains(&format!("`{sequence}`")),
+                    "docs/keybindings.md does not mention `{sequence}`, bound to `{name}`"
+                );
+            }
+        }
+    }
+
+    /// ...and the other way round: a binding removed from the table must not
+    /// linger on the page.
+    #[test]
+    fn the_keybindings_page_invents_no_actions() {
+        let page = include_str!("../../docs/keybindings.md");
+        let known: Vec<String> = default_bindings()
+            .iter()
+            .map(|spec| action_name(&spec.action))
+            .collect();
+
+        // Every `` `name` `` in the third column of a table row.
+        for line in page.lines().filter(|l| l.starts_with('|')) {
+            let Some(last) = line.trim_end_matches('|').rsplit('|').next() else {
+                continue;
+            };
+            let cell = last.trim().trim_matches('`');
+
+            if cell.is_empty() || cell.contains(' ') || !cell.contains('_') {
+                continue;
+            }
+
+            assert!(
+                known.contains(&cell.to_string()),
+                "docs/keybindings.md lists `{cell}`, which is not an action"
+            );
+        }
+    }
 }
