@@ -375,3 +375,51 @@ fn the_defaults_need_no_files_at_all() {
     assert_eq!(app.files, FilesConfig::default());
     assert!(app.sidebar.visible);
 }
+
+// -- The shipped documentation -----------------------------------------------
+
+/// Section 19: `docs/` documents every configuration key and every theme key.
+///
+/// Checked here rather than by reading, because a key added without a line in
+/// the docs is the easiest thing in the world to miss.
+#[test]
+fn every_configuration_key_is_documented() {
+    let reference = perga::config::DEFAULT_CONFIG;
+    let page = include_str!("../docs/configuration.md");
+
+    for key in toml_keys(reference) {
+        assert!(
+            page.contains(&key),
+            "docs/configuration.md does not mention `{key}`"
+        );
+    }
+}
+
+#[test]
+fn every_theme_key_is_documented() {
+    let dark = include_str!("../themes/dark.toml");
+    let page = include_str!("../docs/theming.md");
+
+    for key in toml_keys(dark) {
+        // `name` and `code_theme` are described in prose rather than listed.
+        if key == "name" || key == "code_theme" {
+            continue;
+        }
+        assert!(
+            page.contains(&format!("`{key}`")),
+            "docs/theming.md does not mention the theme key `{key}`"
+        );
+    }
+}
+
+/// The top-level keys of every table in a TOML document.
+fn toml_keys(source: &str) -> Vec<String> {
+    source
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with('#') && !line.starts_with('[') && line.contains('='))
+        .filter_map(|line| line.split('=').next())
+        .map(|key| key.trim().trim_matches('"').to_string())
+        .filter(|key| !key.is_empty())
+        .collect()
+}

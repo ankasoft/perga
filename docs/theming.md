@@ -120,7 +120,7 @@ h1 = { fg = "green", bold = false }   # green, and not bold, unlike dark's h1
 perga does not render, and every "nothing here" line), `mode_active`,
 `mode_inactive`, `match` (a filter or search hit), `line_number`.
 
-**`[markdown]`** — `h1` through `h6`, `text`, `emphasis`, `strong`,
+**`[markdown]`** — `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `text`, `emphasis`, `strong`,
 `strikethrough`, `blockquote`, `blockquote_bar`, `code_inline`,
 `code_block_bg`, `link`, `link_focused`, `link_broken`, `link_external`,
 `wikilink`, `list_marker`, `task_done`, `task_todo`, `table_border`,

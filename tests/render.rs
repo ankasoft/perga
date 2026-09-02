@@ -177,6 +177,30 @@ fn every_builtin_theme_renders() {
     }
 }
 
+/// Section 19: every logo tier at its boundary width, under the theme with the
+/// fewest colours to hide behind.
+#[test]
+fn the_logo_tiers_survive_the_high_contrast_theme() {
+    for (label, width, height) in [
+        ("large", 100u16, 40u16),
+        ("medium", 48, 40),
+        ("minimal", 30, 40),
+        ("short", 100, 10),
+    ] {
+        let mut app = app(width, height);
+        app.theme = perga::theme::Theme::builtin("high-contrast").expect("a built-in theme");
+        app.update(Action::ToggleSidebar);
+
+        let painted = frame(&mut app, width, height);
+        for line in painted.lines() {
+            assert!(
+                line.chars().count() <= usize::from(width),
+                "the {label} tier overflowed {width} columns: {line:?}"
+            );
+        }
+    }
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);
@@ -457,4 +481,69 @@ fn a_large_document_can_be_measured_to_the_end() {
     let (current, total) = app.scroll_position().expect("the document is measured");
     assert!(total > 50_000, "{total}");
     assert!(current <= total);
+}
+
+/// Section 19: `perga FILE | cat` produces clean ANSI with no TUI control
+/// sequences.
+///
+/// Run against the built binary rather than the library: what matters is that
+/// the *process* does not touch the alternate screen when stdout is a pipe.
+#[test]
+fn piped_output_carries_no_tui_control_sequences() {
+    let exe = env!("CARGO_BIN_EXE_perga");
+    let path = common::vault().join("gfm.md");
+
+    let out = std::process::Command::new(exe)
+        .arg(&path)
+        .output()
+        .expect("the binary runs");
+
+    assert!(out.status.success(), "{:?}", out.status);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(!text.is_empty());
+
+    for (sequence, what) in [
+        ("\x1b[?1049h", "enter the alternate screen"),
+        ("\x1b[?1049l", "leave the alternate screen"),
+        ("\x1b[?1000", "mouse tracking"),
+        ("\x1b[?2004", "bracketed paste"),
+        ("\x1b[?25l", "hide the cursor"),
+        ("\x1b[2J", "clear the screen"),
+    ] {
+        assert!(!text.contains(sequence), "piped output tried to {what}");
+    }
+
+    // Styling is expected and wanted; it is the control sequences that are not.
+    assert!(text.contains('\x1b'), "piped output should still be styled");
+}
+
+/// ...and `NO_COLOR` takes even that away.
+#[test]
+fn no_color_strips_the_styling_from_piped_output() {
+    let exe = env!("CARGO_BIN_EXE_perga");
+    let path = common::vault().join("gfm.md");
+
+    let out = std::process::Command::new(exe)
+        .arg(&path)
+        .env("NO_COLOR", "1")
+        .output()
+        .expect("the binary runs");
+
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(!text.is_empty());
+    assert!(!text.contains('\x1b'), "NO_COLOR left an escape behind");
+}
+
+/// A directory in print mode is a usage error, not a guess at a file.
+#[test]
+fn a_directory_piped_is_a_usage_error() {
+    let exe = env!("CARGO_BIN_EXE_perga");
+
+    let out = std::process::Command::new(exe)
+        .arg(common::vault())
+        .output()
+        .expect("the binary runs");
+
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("directory"));
 }
