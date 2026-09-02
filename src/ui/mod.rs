@@ -14,7 +14,7 @@ pub mod welcome;
 
 use ratatui::layout::{Alignment, Rect};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Paragraph, Widget};
+use ratatui::widgets::{Block, Clear, Paragraph, Widget};
 use ratatui::Frame;
 
 use crate::app::{App, Overlay};
@@ -22,6 +22,7 @@ use crate::ui::hints::Hints;
 use crate::ui::layout::{SidebarPlacement, MIN_HEIGHT, MIN_WIDTH};
 use crate::ui::overlay::find::FindBar;
 use crate::ui::overlay::help::Help;
+use crate::ui::overlay::prompt::PromptLine;
 use crate::ui::overlay::switcher::Picker;
 use crate::ui::sidebar::SidebarPane;
 use crate::ui::statusbar::StatusBar;
@@ -89,6 +90,51 @@ fn render_with(app: &App, frame: &mut Frame, lines: &[Line<'static>], total: Opt
             if let Some(find) = &app.tab().find {
                 FindBar::new(find, &app.theme).render(inner(frames.viewport), buf);
             }
+        }
+        // A prompt is one line, centred, rather than a panel: it holds one
+        // line of text and a box around it would be mostly empty.
+        Some(Overlay::Prompt { kind, input }) => {
+            let area = prompt_area(area);
+            Clear.render(area, buf);
+
+            let block = Block::bordered()
+                .border_style(app.theme.ui.border_focused)
+                .style(app.theme.ui.background);
+            let inner = block.inner(area);
+            block.render(area, buf);
+
+            PromptLine::new(
+                input,
+                kind.prefix(),
+                app.theme.ui.status_bar,
+                app.theme.ui.selection,
+            )
+            .render(inner, buf);
+        }
+        Some(Overlay::Switcher {
+            input,
+            rows,
+            selected,
+        }) => {
+            let listed = rows
+                .iter()
+                .map(|row| switcher_row(app, row))
+                .collect::<Vec<_>>();
+
+            let title = if input.is_empty() {
+                "Recent".to_string()
+            } else {
+                format!("Open: {}", input.value())
+            };
+
+            Picker::new(
+                &app.theme,
+                title,
+                " Enter open   Ctrl+Enter new tab   Esc cancel ",
+                listed,
+                *selected,
+            )
+            .render(centred(area), buf);
         }
         Some(Overlay::Disambiguate {
             page,
@@ -172,6 +218,46 @@ fn render_too_small(app: &App, area: Rect, buf: &mut ratatui::buffer::Buffer) {
     Paragraph::new(text)
         .alignment(Alignment::Center)
         .render(block, buf);
+}
+
+/// One quick-switcher row, with the matched characters picked out.
+fn switcher_row(app: &App, row: &crate::app::SwitcherRow) -> Line<'static> {
+    let theme = &app.theme;
+    let display = row.path.display().to_string();
+
+    if row.create {
+        return Line::from(vec![
+            Span::styled(" + ", theme.ui.status_warning),
+            Span::styled(format!("create \"{display}\""), theme.sidebar.file_other),
+        ]);
+    }
+
+    let mut spans = vec![Span::styled(" ", theme.sidebar.file)];
+
+    for (at, c) in display.chars().enumerate() {
+        let matched = row.indices.contains(&(at as u32));
+        spans.push(Span::styled(
+            c.to_string(),
+            if matched {
+                theme.sidebar.r#match
+            } else {
+                theme.sidebar.file
+            },
+        ));
+    }
+
+    Line::from(spans)
+}
+
+/// Where a one-line prompt is drawn: centred, and no taller than it needs.
+fn prompt_area(area: Rect) -> Rect {
+    let width = (area.width * OVERLAY_WIDTH_PERCENT / 100).max(1);
+    Rect {
+        x: area.x + (area.width - width) / 2,
+        y: area.y + area.height / 3,
+        width,
+        height: 3.min(area.height),
+    }
 }
 
 /// The content area inside a bordered pane.

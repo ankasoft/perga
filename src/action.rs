@@ -11,6 +11,7 @@
 
 use std::path::PathBuf;
 
+use crate::search::content::Hit;
 use crate::ui::overlay::prompt::TextEdit;
 use crate::ui::sidebar::SidebarMode;
 use crate::vault::index::FileEntry;
@@ -142,6 +143,30 @@ pub enum Action {
     CloseFind,
     /// Open the project-wide search prompt.
     OpenProjectSearch,
+    /// Edit the open prompt. Only reachable while one is open.
+    PromptEdit(TextEdit),
+    /// Act on what was typed into the prompt.
+    PromptAccept,
+    /// A batch of hits from the project search.
+    SearchHits(Vec<Hit>),
+    /// The project search finished.
+    SearchFinished {
+        /// How many hits it reported.
+        total: usize,
+        /// Whether the result cap cut it short.
+        truncated: bool,
+    },
+    /// The search pattern would not compile.
+    SearchFailed(String),
+    /// Edit the quick switcher's query.
+    SwitcherEdit(TextEdit),
+    /// Move the quick switcher's selection.
+    SwitcherMove(isize),
+    /// Open whatever the quick switcher has selected.
+    SwitcherAccept {
+        /// Open it in a background tab rather than this one.
+        new_tab: bool,
+    },
 
     // -- Sidebar -----------------------------------------------------------
     //

@@ -13,12 +13,14 @@ use ratatui::layout::Rect;
 
 use crate::action::Action;
 use crate::config::keymap::Keymap;
-use crate::config::schema::{FilesConfig, GeneralConfig, UiConfig, WikiLinkConfig};
+use crate::config::schema::{FilesConfig, GeneralConfig, SearchConfig, UiConfig, WikiLinkConfig};
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
 use crate::doc::links;
 use crate::doc::render::{RenderedDocument, Renderer};
+use crate::search::content::{self, SearchEvent, SearchHandle};
 use crate::search::in_doc::FindState;
+use crate::search::SearchState;
 use crate::terminal::{self, Tui};
 use crate::theme::Theme;
 use crate::ui;
@@ -192,6 +194,12 @@ impl Tab {
     }
 }
 
+/// The most rows the quick switcher scores and shows.
+pub const SWITCHER_ROWS: usize = 100;
+
+/// The most documents the session's recent list remembers.
+pub const MAX_RECENT: usize = 50;
+
 /// The most tabs that may be open at once.
 ///
 /// Past this the active tab is reused: twenty labels is already more than fits
@@ -204,6 +212,17 @@ pub const MAX_TAB_LABEL: usize = 20;
 
 /// Marks a tab whose buffer has unsaved edits.
 pub const DIRTY_MARKER: &str = "●";
+
+/// Give a typed path a Markdown extension when it has none.
+fn with_markdown_extension(query: &str, files: &FilesConfig) -> String {
+    let query = query.trim();
+    if files.is_markdown(Path::new(query)) {
+        return query.to_string();
+    }
+
+    let extension = files.extensions.first().map_or("md", String::as_str);
+    format!("{query}.{extension}")
+}
 
 /// Shorten a label to `width` columns, eliding the middle.
 ///
@@ -322,6 +341,22 @@ pub enum Overlay {
         /// Which candidate is selected.
         selected: usize,
     },
+    /// A single-line prompt. What it is for is in the [`PromptKind`].
+    Prompt {
+        /// What the prompt will do with what is typed.
+        kind: PromptKind,
+        /// The line being edited.
+        input: TextInput,
+    },
+    /// The fuzzy quick switcher.
+    Switcher {
+        /// The query being typed.
+        input: TextInput,
+        /// The rows, best match first, or the recent list for an empty query.
+        rows: Vec<SwitcherRow>,
+        /// Which row is selected.
+        selected: usize,
+    },
     /// Link hint mode: every visible link wears a label.
     Hints {
         /// The links wearing labels, in reading order.
@@ -329,6 +364,33 @@ pub enum Overlay {
         /// The label typed so far.
         typed: String,
     },
+}
+
+/// What a prompt will do with what is typed into it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptKind {
+    /// Run a project-wide search.
+    ProjectSearch,
+}
+
+impl PromptKind {
+    /// The prefix drawn at the left of the prompt.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            PromptKind::ProjectSearch => "search: ",
+        }
+    }
+}
+
+/// One row of the quick switcher.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwitcherRow {
+    /// The path, relative to the vault root.
+    pub path: PathBuf,
+    /// Which characters of the path matched, for highlighting.
+    pub indices: Vec<u32>,
+    /// Whether this row is the offer to create a file that does not exist.
+    pub create: bool,
 }
 
 /// The whole application state.
@@ -341,6 +403,20 @@ pub struct App {
     pub general: GeneralConfig,
     /// The `[wikilinks]` table.
     pub wikilinks: WikiLinkConfig,
+    /// The `[search]` table.
+    pub search_config: SearchConfig,
+    /// The last project-wide search.
+    pub search: SearchState,
+    /// Documents opened this session, most recent first.
+    ///
+    /// What the quick switcher shows before anything has been typed.
+    pub recent: Vec<PathBuf>,
+    /// The running project search. Dropping it cancels the search.
+    search_handle: Option<SearchHandle>,
+    /// The fuzzy matcher, reused between keystrokes for its scratch buffers.
+    fuzzy: crate::search::fuzzy::Fuzzy,
+    /// How a project search reports back.
+    search_sink: Option<Arc<dyn Fn(SearchEvent) + Send + Sync>>,
     /// How the index reports back, once the walk has said what to index.
     ///
     /// Held rather than passed in because the build starts when the *walk*
@@ -403,6 +479,12 @@ impl App {
             files,
             general: GeneralConfig::default(),
             wikilinks: WikiLinkConfig::default(),
+            search_config: SearchConfig::default(),
+            search: SearchState::default(),
+            recent: Vec::new(),
+            search_handle: None,
+            fuzzy: crate::search::fuzzy::Fuzzy::new(),
+            search_sink: None,
             index_sink: None,
             theme,
             highlighter: Highlighter::new(),
@@ -476,6 +558,11 @@ impl App {
         self.index_sink = Some(Arc::new(sink));
     }
 
+    /// Register how a project search reports back.
+    pub fn on_search(&mut self, sink: impl Fn(SearchEvent) + Send + Sync + 'static) {
+        self.search_sink = Some(Arc::new(sink));
+    }
+
     /// A renderer for the current theme at a given content width.
     pub fn renderer(&self, width: u16) -> Renderer {
         Renderer::new(&self.theme, self.highlighter.clone(), width)
@@ -499,6 +586,7 @@ impl App {
         }
         // Everything about the *view* is replaced; the tab's history and its
         // read-or-edit mode belong to the tab, not to the document in it.
+        let path = doc.path.clone();
         let tab = &mut self.tabs[self.active_tab];
         tab.doc = Some(doc);
         tab.layout = RenderedDocument::new();
@@ -506,6 +594,7 @@ impl App {
         tab.hscroll = 0;
         tab.focused_link = None;
 
+        self.remember(&path);
         self.reveal_active_document();
     }
 
@@ -634,6 +723,9 @@ impl App {
                 };
                 self.status.set(state, Severity::Info);
             }
+            Action::TreeFilter if self.sidebar.mode == SidebarMode::Search => {
+                self.open_prompt(PromptKind::ProjectSearch);
+            }
             Action::TreeFilter => self.open_tree_filter(),
             Action::TreeFilterEdit(edit) => self.edit_tree_filter(edit),
             Action::TreeFilterAccept => self.sidebar.filter = None,
@@ -642,6 +734,30 @@ impl App {
                 self.vault.tree.set_filter(None);
             }
             Action::OpenPath(path) => self.open_path(&path),
+
+            // -- Project search and the quick switcher ----------------------
+            Action::OpenProjectSearch => self.open_prompt(PromptKind::ProjectSearch),
+            Action::PromptEdit(edit) => self.edit_prompt(edit),
+            Action::PromptAccept => self.accept_prompt(),
+            Action::SearchHits(hits) => {
+                self.search.hits.extend(hits);
+            }
+            Action::SearchFinished { total, truncated } => {
+                self.search.running = false;
+                self.search.truncated = truncated;
+                self.search.elapsed = self.search.started.map(|at| at.elapsed());
+                let _ = total;
+                self.search_handle = None;
+            }
+            Action::SearchFailed(error) => {
+                self.search.running = false;
+                self.search.error = Some(error);
+                self.search_handle = None;
+            }
+            Action::OpenQuickSwitcher => self.open_switcher(),
+            Action::SwitcherEdit(edit) => self.edit_switcher(edit),
+            Action::SwitcherMove(delta) => self.move_switcher(delta),
+            Action::SwitcherAccept { new_tab } => self.accept_switcher(new_tab),
 
             // -- Find in document -------------------------------------------
             Action::OpenFindInDocument => self.open_find(),
@@ -1132,6 +1248,302 @@ impl App {
             .collect()
     }
 
+    // -- Prompts -------------------------------------------------------------
+
+    /// Open a prompt, pre-filled where that is the useful thing to do.
+    fn open_prompt(&mut self, kind: PromptKind) {
+        let prefill = match kind {
+            // Re-running a search with one word changed is far more common
+            // than starting from nothing.
+            PromptKind::ProjectSearch => self.search.query.clone(),
+        };
+
+        self.overlay = Some(Overlay::Prompt {
+            kind,
+            input: TextInput::with_value(prefill),
+        });
+        self.focus = Focus::Overlay;
+    }
+
+    /// Apply one edit to the open prompt.
+    fn edit_prompt(&mut self, edit: TextEdit) {
+        if let Some(Overlay::Prompt { input, .. }) = &mut self.overlay {
+            input.apply(edit);
+        }
+    }
+
+    /// Act on what was typed into the prompt.
+    fn accept_prompt(&mut self) {
+        let Some(Overlay::Prompt { kind, input }) = self.overlay.clone() else {
+            return;
+        };
+
+        self.close_overlay();
+
+        match kind {
+            PromptKind::ProjectSearch => self.start_search(input.value()),
+        }
+    }
+
+    // -- Project search ------------------------------------------------------
+
+    /// Run a project-wide search, cancelling whatever was already running.
+    pub fn start_search(&mut self, query: &str) {
+        // Dropping the handle cancels the previous search, so a reader
+        // re-running a query does not leave a thread reading the vault for the
+        // query they have already replaced.
+        self.search_handle = None;
+
+        if query.trim().is_empty() {
+            self.search = SearchState::default();
+            return;
+        }
+
+        self.search.begin(query.to_string());
+        self.sidebar.mode = SidebarMode::Search;
+        self.sidebar.visible = true;
+
+        let Some(sink) = self.search_sink.clone() else {
+            // No sink means no event loop; the tests drive `search_now`.
+            return;
+        };
+
+        let walk = WalkOptions {
+            respect_gitignore: self.files.respect_gitignore,
+            follow_symlinks: self.general.follow_symlinks,
+        };
+
+        self.search_handle = Some(content::spawn(
+            self.vault.root.clone(),
+            content::Query::parse(query, &self.search_config),
+            self.search_config.clone(),
+            self.files.clone(),
+            walk,
+            move |event| sink(event),
+        ));
+    }
+
+    /// Run a project search synchronously, for tests and for the paths with no
+    /// event loop behind them.
+    pub fn search_now(&mut self, query: &str) {
+        use std::sync::atomic::AtomicBool;
+        use std::sync::Mutex;
+
+        self.search.begin(query.to_string());
+        self.sidebar.mode = SidebarMode::Search;
+
+        let walk = WalkOptions {
+            respect_gitignore: self.files.respect_gitignore,
+            follow_symlinks: self.general.follow_symlinks,
+        };
+        let collected = Mutex::new(Vec::new());
+        let outcome = Mutex::new((false, None));
+
+        content::run(
+            &self.vault.root,
+            &content::Query::parse(query, &self.search_config),
+            &self.search_config,
+            &self.files,
+            walk,
+            &AtomicBool::new(false),
+            &|event| match event {
+                SearchEvent::Hits(hits) => collected.lock().unwrap().extend(hits),
+                SearchEvent::Finished { truncated, .. } => {
+                    outcome.lock().unwrap().0 = truncated;
+                }
+                SearchEvent::BadPattern(e) => outcome.lock().unwrap().1 = Some(e),
+            },
+        );
+
+        self.search.hits = collected.into_inner().unwrap();
+        let (truncated, error) = outcome.into_inner().unwrap();
+        self.search.truncated = truncated;
+        self.search.error = error;
+        self.search.running = false;
+        self.search.elapsed = self.search.started.map(|at| at.elapsed());
+    }
+
+    /// Open the search hit the sidebar has selected, scrolled to its line.
+    fn open_selected_hit(&mut self) {
+        let Some(hit) = self.search.hits.get(self.search.selected).cloned() else {
+            return;
+        };
+
+        let absolute = self.vault.absolute(&hit.path);
+        self.navigate_to(&absolute, None);
+
+        // The line is one-based and the offset map is in bytes, so the line is
+        // converted here rather than every caller doing it.
+        if let Some(offset) = self.offset_of_line(hit.line) {
+            self.scroll_to_offset(offset);
+        }
+    }
+
+    /// The byte offset a one-based line begins at in the active document.
+    fn offset_of_line(&self, line: u64) -> Option<usize> {
+        let source = &self.tab().doc.as_ref()?.source;
+        let wanted = line.saturating_sub(1) as usize;
+
+        if wanted == 0 {
+            return Some(0);
+        }
+
+        source
+            .match_indices('\n')
+            .nth(wanted - 1)
+            .map(|(at, _)| at + 1)
+    }
+
+    // -- The quick switcher --------------------------------------------------
+
+    /// Open the fuzzy switcher, showing the recent list until something is
+    /// typed.
+    fn open_switcher(&mut self) {
+        let rows = self.switcher_rows("");
+
+        self.overlay = Some(Overlay::Switcher {
+            input: TextInput::new(),
+            rows,
+            selected: 0,
+        });
+        self.focus = Focus::Overlay;
+    }
+
+    /// Apply one edit to the switcher query and rescore.
+    fn edit_switcher(&mut self, edit: TextEdit) {
+        let Some(Overlay::Switcher { input, .. }) = &mut self.overlay else {
+            return;
+        };
+
+        input.apply(edit);
+        let query = input.value().to_string();
+        let rows = self.switcher_rows(&query);
+
+        if let Some(Overlay::Switcher {
+            rows: slot,
+            selected,
+            ..
+        }) = &mut self.overlay
+        {
+            *slot = rows;
+            // The list under the cursor changed, so the cursor goes back to
+            // the best match rather than to whatever is now in its old row.
+            *selected = 0;
+        }
+    }
+
+    /// The rows for a switcher query.
+    fn switcher_rows(&mut self, query: &str) -> Vec<SwitcherRow> {
+        if query.trim().is_empty() {
+            // Section 8.3: an empty query shows the recent list, most recent
+            // first, not an arbitrary slice of the vault.
+            return self
+                .recent
+                .iter()
+                .map(|path| SwitcherRow {
+                    path: path.clone(),
+                    indices: Vec::new(),
+                    create: false,
+                })
+                .collect();
+        }
+
+        let paths: Vec<PathBuf> = self
+            .vault
+            .markdown
+            .iter()
+            .map(|(path, _, _)| path.clone())
+            .collect();
+
+        let mut rows: Vec<SwitcherRow> = self
+            .fuzzy
+            .search(&paths, query, SWITCHER_ROWS)
+            .into_iter()
+            .map(|candidate| SwitcherRow {
+                path: candidate.path,
+                indices: candidate.indices,
+                create: false,
+            })
+            .collect();
+
+        // A path that matches nothing is a note the reader has not written
+        // yet, and the last row offers to write it.
+        if rows.is_empty() {
+            rows.push(SwitcherRow {
+                path: PathBuf::from(with_markdown_extension(query, &self.files)),
+                indices: Vec::new(),
+                create: true,
+            });
+        }
+
+        rows
+    }
+
+    /// Move the switcher selection, stopping at both ends.
+    fn move_switcher(&mut self, delta: isize) {
+        let Some(Overlay::Switcher { rows, selected, .. }) = &mut self.overlay else {
+            return;
+        };
+
+        if rows.is_empty() {
+            *selected = 0;
+            return;
+        }
+
+        let last = rows.len() as isize - 1;
+        *selected = (*selected as isize + delta).clamp(0, last) as usize;
+    }
+
+    /// Open whatever the switcher has selected.
+    fn accept_switcher(&mut self, new_tab: bool) {
+        let Some(Overlay::Switcher { rows, selected, .. }) = self.overlay.clone() else {
+            return;
+        };
+
+        let Some(row) = rows.get(selected).cloned() else {
+            return;
+        };
+        self.close_overlay();
+
+        if row.create {
+            // Creating the file is Section 9.11; until then the switcher says
+            // what it would create rather than pretending it did.
+            self.status.set(
+                format!("`{}` does not exist yet", row.path.display()),
+                Severity::Warning,
+            );
+            return;
+        }
+
+        let absolute = self.vault.absolute(&row.path);
+
+        if new_tab {
+            match Document::load(&absolute) {
+                Ok(document) => {
+                    self.open_in_background_tab(document);
+                }
+                Err(e) => self.status.set(
+                    format!("Cannot read {}: {e}", row.path.display()),
+                    Severity::Error,
+                ),
+            }
+            return;
+        }
+
+        self.navigate_to(&absolute, None);
+    }
+
+    /// Record a document in the session's recent list.
+    fn remember(&mut self, path: &Path) {
+        let Some(relative) = self.vault.relative(path).map(Path::to_path_buf) else {
+            return;
+        };
+
+        self.recent.retain(|seen| seen != &relative);
+        self.recent.insert(0, relative);
+        self.recent.truncate(MAX_RECENT);
+    }
+
     // -- Sidebar dispatch ---------------------------------------------------
 
     /// Move the selection in whichever sidebar mode is showing.
@@ -1146,8 +1558,9 @@ impl App {
                 let at = self.sidebar.outline_selected.min(count - 1) as isize;
                 self.sidebar.outline_selected = (at + delta).clamp(0, count as isize - 1) as usize;
             }
-            // The other two modes arrive with the features behind them.
-            SidebarMode::Search | SidebarMode::Links => {}
+            SidebarMode::Search => self.search.move_selection(delta),
+            // The links mode is a list to read, not one to walk.
+            SidebarMode::Links => {}
         }
     }
 
@@ -1156,7 +1569,8 @@ impl App {
         match self.sidebar.mode {
             SidebarMode::Files => self.tree_expand_or_open(),
             SidebarMode::Outline => self.jump_to_selected_heading(),
-            SidebarMode::Search | SidebarMode::Links => {}
+            SidebarMode::Search => self.open_selected_hit(),
+            SidebarMode::Links => {}
         }
     }
 
@@ -1743,6 +2157,8 @@ pub enum Message {
     Walk(WalkEvent),
     /// The backlink indexer reported something.
     Index(IndexEvent),
+    /// The project searcher reported something.
+    Search(SearchEvent),
 }
 
 /// Run the application until it quits.

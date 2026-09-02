@@ -15,6 +15,7 @@ use crate::app::{App, Focus};
 use crate::ui::sidebar::backlinks::LinksMode;
 use crate::ui::sidebar::files::FilesMode;
 use crate::ui::sidebar::outline::OutlineMode;
+use crate::ui::sidebar::search::SearchMode;
 
 /// Which of the four sidebar modes is showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
@@ -125,7 +126,7 @@ impl<'a> SidebarPane<'a> {
                 let count = self.app.tab().doc.as_ref().map_or(0, |d| d.links.len());
                 format!("{count} outgoing")
             }
-            other => other.label().to_string(),
+            SidebarMode::Search => self.app.search.summary(),
         };
 
         Line::styled(text, theme.sidebar.file_other)
@@ -192,8 +193,7 @@ impl Widget for SidebarPane<'_> {
             SidebarMode::Files => FilesMode::new(self.app).render(content, buf),
             SidebarMode::Outline => OutlineMode::new(self.app).render(content, buf),
             SidebarMode::Links => LinksMode::new(self.app).render(content, buf),
-            // The search mode arrives with the feature behind it.
-            SidebarMode::Search => {}
+            SidebarMode::Search => SearchMode::new(self.app).render(content, buf),
         }
     }
 }

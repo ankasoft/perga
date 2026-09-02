@@ -13,6 +13,7 @@ use crossterm::event::{
 use crate::action::Action;
 use crate::app::{App, Focus, Message, Overlay, TabMode};
 use crate::config::keymap::{KeyChord, KeyContext, Resolution};
+use crate::search::content::SearchEvent;
 use crate::ui::hints;
 use crate::ui::overlay::prompt::TextEdit;
 use crate::vault::index::IndexEvent;
@@ -27,6 +28,13 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
         Message::SyntaxReady => vec![Action::SyntaxReady],
+        Message::Search(event) => vec![match event {
+            SearchEvent::Hits(hits) => Action::SearchHits(hits),
+            SearchEvent::Finished { total, truncated } => {
+                Action::SearchFinished { total, truncated }
+            }
+            SearchEvent::BadPattern(e) => Action::SearchFailed(e),
+        }],
         Message::Index(event) => vec![match event {
             IndexEvent::Indexed(entries) => Action::IndexBatch(entries),
             IndexEvent::Finished => Action::IndexFinished,
@@ -171,6 +179,36 @@ fn translate_find_key(chord: KeyChord) -> Vec<Action> {
     }
 }
 
+/// Keys typed into a single-line input.
+///
+/// Shared by the prompt, the quick switcher, and the tree filter: one set of
+/// editing keys, so `Ctrl+W` means the same thing wherever text is typed.
+fn translate_line_key(
+    chord: KeyChord,
+    edit: impl Fn(TextEdit) -> Action,
+    accept: Action,
+    cancel: Action,
+) -> Vec<Action> {
+    let ctrl = chord.modifiers.contains(KeyModifiers::CONTROL);
+
+    match chord.code {
+        KeyCode::Esc => vec![cancel],
+        KeyCode::Enter => vec![accept],
+        KeyCode::Backspace => vec![edit(TextEdit::Backspace)],
+        KeyCode::Delete => vec![edit(TextEdit::Delete)],
+        KeyCode::Left => vec![edit(TextEdit::Left)],
+        KeyCode::Right => vec![edit(TextEdit::Right)],
+        KeyCode::Home => vec![edit(TextEdit::Home)],
+        KeyCode::End => vec![edit(TextEdit::End)],
+        KeyCode::Char('u') if ctrl => vec![edit(TextEdit::Clear)],
+        KeyCode::Char('w') if ctrl => vec![edit(TextEdit::DeleteWordBack)],
+        KeyCode::Char(c) if !chord.modifiers.intersects(CTRL_OR_ALT) => {
+            vec![edit(TextEdit::Insert(c))]
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// The modifiers that mean a character key is a command rather than text.
 const CTRL_OR_ALT: KeyModifiers = KeyModifiers::CONTROL.union(KeyModifiers::ALT);
 
@@ -207,6 +245,34 @@ fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
             _ => Vec::new(),
         },
         Overlay::Find => translate_find_key(chord),
+        Overlay::Prompt { .. } => translate_line_key(
+            chord,
+            Action::PromptEdit,
+            Action::PromptAccept,
+            Action::Escape,
+        ),
+        Overlay::Switcher { .. } => match chord.code {
+            KeyCode::Down | KeyCode::Tab => vec![Action::SwitcherMove(1)],
+            KeyCode::Up | KeyCode::BackTab => vec![Action::SwitcherMove(-1)],
+            KeyCode::Char('n') if chord.modifiers.contains(KeyModifiers::CONTROL) => {
+                vec![Action::SwitcherMove(1)]
+            }
+            KeyCode::Char('p') if chord.modifiers.contains(KeyModifiers::CONTROL) => {
+                vec![Action::SwitcherMove(-1)]
+            }
+            // `Ctrl+Enter` is not reportable on every terminal; Section 8.3
+            // gives `Tab` then `Enter` as the way through on those, which the
+            // `Tab` binding above already provides for moving.
+            KeyCode::Enter if chord.modifiers.contains(KeyModifiers::CONTROL) => {
+                vec![Action::SwitcherAccept { new_tab: true }]
+            }
+            _ => translate_line_key(
+                chord,
+                Action::SwitcherEdit,
+                Action::SwitcherAccept { new_tab: false },
+                Action::Escape,
+            ),
+        },
         Overlay::Disambiguate {
             candidates,
             selected,

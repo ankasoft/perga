@@ -254,6 +254,11 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
         let _ = index_tx.send(Message::Index(event));
     });
 
+    let search_tx = tx.clone();
+    app.on_search(move |event| {
+        let _ = search_tx.send(Message::Search(event));
+    });
+
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
 
