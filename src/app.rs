@@ -139,6 +139,11 @@ pub struct Tab {
     pub history: History,
     /// The link `Enter` would follow, as an index into the document's links.
     pub focused_link: Option<usize>,
+    /// Whether the buffer has edits that are not on disk.
+    ///
+    /// Owned by the tab rather than by the editor so that the tab bar and the
+    /// quit prompt can ask about a tab that is not the active one.
+    pub dirty: bool,
 }
 
 impl Tab {
@@ -160,6 +165,16 @@ impl Tab {
         }
     }
 
+    /// The label as the tab bar draws it: truncated, with a dirty marker.
+    pub fn display_label(&self) -> String {
+        let label = truncate_middle(self.label(), MAX_TAB_LABEL);
+        if self.dirty {
+            format!("{DIRTY_MARKER} {label}")
+        } else {
+            label
+        }
+    }
+
     /// The furthest the viewport may scroll, keeping one screen in view.
     ///
     /// `None` while the document has not been fully measured, in which case
@@ -169,6 +184,61 @@ impl Tab {
         let total = self.layout.total_lines(doc)?;
         Some(total.saturating_sub(usize::from(height).max(1)))
     }
+}
+
+/// The most tabs that may be open at once.
+///
+/// Past this the active tab is reused: twenty labels is already more than fits
+/// on a comfortable terminal, and an unbounded tab bar is a worse answer than
+/// saying so.
+pub const MAX_TABS: usize = 20;
+
+/// The widest a tab label is drawn, in columns.
+pub const MAX_TAB_LABEL: usize = 20;
+
+/// Marks a tab whose buffer has unsaved edits.
+pub const DIRTY_MARKER: &str = "●";
+
+/// Shorten a label to `width` columns, eliding the middle.
+///
+/// The middle rather than the tail: `2024-01-conference-notes.md` and
+/// `2024-01-conference-slides.md` are told apart by their ends, and a tail
+/// ellipsis makes every file in a dated vault look the same.
+pub fn truncate_middle(label: &str, width: usize) -> String {
+    use unicode_width::UnicodeWidthChar;
+
+    let total: usize = label.chars().map(|c| c.width().unwrap_or(0)).sum();
+    if total <= width || width < 3 {
+        return label.to_string();
+    }
+
+    let keep = width - 1;
+    let head_width = keep.div_ceil(2);
+    let tail_width = keep - head_width;
+
+    let mut head = String::new();
+    let mut used = 0;
+    for c in label.chars() {
+        let w = c.width().unwrap_or(0);
+        if used + w > head_width {
+            break;
+        }
+        head.push(c);
+        used += w;
+    }
+
+    let mut tail = String::new();
+    let mut used = 0;
+    for c in label.chars().rev() {
+        let w = c.width().unwrap_or(0);
+        if used + w > tail_width {
+            break;
+        }
+        tail.insert(0, c);
+        used += w;
+    }
+
+    format!("{head}…{tail}")
 }
 
 /// The sidebar's own state.
@@ -516,10 +586,17 @@ impl App {
             }
             Action::OpenPath(path) => self.open_path(&path),
 
+            // -- Tabs ------------------------------------------------------
+            Action::NewTab => self.new_tab(),
+            Action::CloseTab => self.close_tab(),
+            Action::NextTab => self.switch_tab(1),
+            Action::PrevTab => self.switch_tab(-1),
+
             // -- Links and history ----------------------------------------
             Action::NextLink => self.cycle_link(true),
             Action::PrevLink => self.cycle_link(false),
             Action::FollowLink => self.follow_focused_link(),
+            Action::FollowLinkInNewTab => self.follow_focused_link_in_new_tab(),
             Action::HintMode => self.open_hint_mode(),
             Action::FollowHintedLink(index) => self.follow_link(index),
             Action::HistoryBack => self.navigate_history(false),
@@ -982,6 +1059,109 @@ impl App {
             })
             .map(|(index, _)| index)
             .collect()
+    }
+
+    // -- Tabs --------------------------------------------------------------
+
+    /// Open a new tab on the welcome screen and switch to it.
+    fn new_tab(&mut self) {
+        if self.tabs.len() >= MAX_TABS {
+            self.status.set(
+                format!("{MAX_TABS} tabs is the maximum; reusing this one"),
+                Severity::Warning,
+            );
+            self.tabs[self.active_tab] = Tab::default();
+            return;
+        }
+
+        self.tabs.push(Tab::default());
+        self.active_tab = self.tabs.len() - 1;
+        self.focus = Focus::Viewport;
+    }
+
+    /// Close the active tab, or quit when it is the last one.
+    fn close_tab(&mut self) {
+        if self.tabs.len() == 1 {
+            self.update(Action::Quit);
+            return;
+        }
+
+        self.tabs.remove(self.active_tab);
+        // Closing a tab lands on the one to its left, which is where the eye
+        // already is; closing the first lands on the new first.
+        self.active_tab = self.active_tab.saturating_sub(1);
+        self.reveal_active_document();
+    }
+
+    /// Move to the next or previous tab, wrapping at both ends.
+    fn switch_tab(&mut self, delta: isize) {
+        let count = self.tabs.len() as isize;
+        if count <= 1 {
+            return;
+        }
+
+        self.active_tab = (self.active_tab as isize + delta).rem_euclid(count) as usize;
+        self.reveal_active_document();
+    }
+
+    /// Open a document in a new tab without leaving the current one.
+    ///
+    /// Returns whether the tab was opened; at the cap it is not, and the
+    /// caller decides what to do instead.
+    fn open_in_background_tab(&mut self, document: Document) -> bool {
+        if self.tabs.len() >= MAX_TABS {
+            self.status
+                .set(format!("{MAX_TABS} tabs is the maximum"), Severity::Warning);
+            return false;
+        }
+
+        let label = document.label().to_string();
+        let mut tab = Tab::with_document(document);
+        // A background tab has never been drawn, so it has no measured layout
+        // and starts at the top — which is where a freshly opened document is
+        // anyway.
+        tab.scroll = 0;
+
+        self.tabs.push(tab);
+        self.status
+            .set(format!("Opened {label} in a new tab"), Severity::Info);
+        true
+    }
+
+    /// Follow the focused link into a background tab.
+    ///
+    /// Only a document target makes sense here: an anchor has nowhere else to
+    /// go, and a directory or an external URL is not a tab.
+    fn follow_focused_link_in_new_tab(&mut self) {
+        let Some(index) = self.tab().focused_link else {
+            self.status
+                .set("No link focused; press `n` or `f`", Severity::Info);
+            return;
+        };
+
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+        let Some(link) = doc.links.get(index) else {
+            return;
+        };
+
+        let target = link.target.clone();
+        let resolved = links::resolve(&target, doc.dir(), &self.vault.root, &self.files);
+
+        match resolved {
+            links::Resolved::Document { path, .. } => match Document::load(&path) {
+                Ok(document) => {
+                    self.open_in_background_tab(document);
+                }
+                Err(e) => self.status.set(
+                    format!("Cannot read {}: {e}", path.display()),
+                    Severity::Error,
+                ),
+            },
+            // Everything else does what it would have done in this tab.
+            _ => self.follow_link(index),
+        }
     }
 
     /// Move focus between the sidebar and the viewport.

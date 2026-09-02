@@ -422,3 +422,33 @@ is open: two cues competing for the same links is worse than one.
 Typing a key with no matching label is a typo. It is discarded and hint mode
 stays open, rather than cancelling the mode and leaving the reader to press `f`
 again.
+
+## M5 — Tabs
+
+### D41: the tab bar window follows the active tab
+
+Twenty labels do not fit on any terminal, so the bar draws a window and grows
+it outwards from the active tab rather than from the first. The tab being read
+is always on screen; an ellipsis at either end says there are more. Scrolling
+the bar to find the tab you are already in is not something a reader should
+have to do.
+
+### D42: a label is elided in the middle
+
+`2024-01-conference-notes.md` and `2024-01-conference-slides.md` are told apart
+by their ends. A tail ellipsis makes every note in a dated vault look the same,
+so the middle goes instead.
+
+### D43: `Ctrl+Enter` on a non-document target does what `Enter` would
+
+A background tab is only meaningful for a document. An anchor has nowhere else
+to go, a directory is revealed in the tree, and an external URL belongs to the
+desktop opener — so `Ctrl+Enter` falls through to the ordinary follow rather
+than opening an empty tab or refusing.
+
+### D44: `dirty` lives on the tab, not on the editor
+
+The tab bar and the quit prompt both need to know whether a tab that is *not*
+the active one has unsaved edits. Keeping the flag on `Tab` means neither has to
+reach into an editor state that only exists while a tab is being edited. M9
+sets it; M5 draws it.
