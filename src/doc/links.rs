@@ -27,6 +27,11 @@ pub enum LinkKind {
     Inline,
     /// `<https://example.com>` or a bare URL GFM turned into a link.
     Autolink,
+    /// `[[Page Name]]`, in any of its four spellings.
+    ///
+    /// Not Markdown: `pulldown-cmark` sees `[[Page]]` as a paragraph
+    /// containing brackets, so these are scanned for separately.
+    Wiki,
 }
 
 /// One link, as written in the source.
@@ -80,8 +85,23 @@ pub enum Resolved {
 }
 
 /// Extract every link in a document, in reading order.
+///
+/// Two passes over the same source: `pulldown-cmark` for the Markdown links,
+/// and a scanner for the wiki-links it does not know about. The first pass also
+/// collects the ranges that hold code, which is what keeps a `[[Page]]` written
+/// inside a fenced block from being turned into a link.
 pub fn extract(source: &str) -> Vec<Link> {
+    let (mut links, verbatim) = extract_markdown(source);
+
+    links.extend(extract_wiki(source, &verbatim));
+    links.sort_by_key(|link| link.range.start);
+    links
+}
+
+/// The Markdown links, and the ranges that must not be scanned for wiki-links.
+fn extract_markdown(source: &str) -> (Vec<Link>, Vec<Range<usize>>) {
     let mut links = Vec::new();
+    let mut verbatim = Vec::new();
     let mut open: Option<(Range<usize>, String, LinkKind, String)> = None;
 
     for (event, range) in Parser::new_ext(source, parser_options()).into_offset_iter() {
@@ -114,16 +134,103 @@ pub fn extract(source: &str) -> Vec<Link> {
                     });
                 }
             }
-            Event::Text(text) | Event::Code(text) => {
+            Event::Code(text) => {
+                verbatim.push(range);
                 if let Some((_, _, _, collected)) = &mut open {
                     collected.push_str(&text);
                 }
             }
+            Event::Text(text) => {
+                if let Some((_, _, _, collected)) = &mut open {
+                    collected.push_str(&text);
+                }
+            }
+            // A `[[Page]]` in a fenced block, in raw HTML, or in the
+            // frontmatter is text, not a link.
+            Event::Start(Tag::CodeBlock(_)) | Event::Start(Tag::MetadataBlock(_)) => {
+                verbatim.push(range);
+            }
+            Event::Html(_) | Event::InlineHtml(_) => verbatim.push(range),
             _ => {}
         }
     }
 
+    (links, verbatim)
+}
+
+/// Scan for `[[Page Name]]` in all four of its spellings.
+///
+/// A scanner rather than a parser extension: the syntax is not Markdown, and
+/// the alternative — post-processing `pulldown-cmark`'s events back into the
+/// bracket pairs it split apart — reconstructs less reliably than reading the
+/// source does.
+fn extract_wiki(source: &str, verbatim: &[Range<usize>]) -> Vec<Link> {
+    let bytes = source.as_bytes();
+    let mut links = Vec::new();
+    let mut at = 0usize;
+
+    while let Some(found) = source[at..].find("[[") {
+        let start = at + found;
+        at = start + 2;
+
+        let Some(end) = source[at..].find("]]") else {
+            break;
+        };
+        let end = at + end;
+        let inner = &source[at..end];
+        at = end + 2;
+
+        if verbatim.iter().any(|range| range.contains(&start)) {
+            continue;
+        }
+
+        // A newline inside the brackets means they were never a link; two
+        // paragraphs apart with stray brackets is more likely than a wiki-link
+        // spanning a blank line.
+        if inner.contains('\n') || inner.trim().is_empty() {
+            continue;
+        }
+
+        // `![[Page]]` is an embed in some tools. perga does not embed, and a
+        // link to the page is the honest fallback.
+        let range = if start > 0 && bytes[start - 1] == b'!' {
+            start - 1..at
+        } else {
+            start..at
+        };
+
+        let (target, display) = split_wiki(inner);
+        links.push(Link {
+            text: display,
+            target,
+            range,
+            kind: LinkKind::Wiki,
+        });
+    }
+
     links
+}
+
+/// Split `Page#Heading|Display` into its target and its display text.
+///
+/// The pipe comes last so that a display text containing a `#` is not mistaken
+/// for a heading, which is the way both Obsidian and MediaWiki read it.
+fn split_wiki(inner: &str) -> (String, String) {
+    let (target, display) = match inner.split_once('|') {
+        Some((target, display)) => (target.trim(), Some(display.trim())),
+        None => (inner.trim(), None),
+    };
+
+    let shown = display
+        .filter(|d| !d.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            // Without a display text the reader sees the page name, and a
+            // heading fragment is part of what they are being sent to.
+            target.replace('#', " § ")
+        });
+
+    (target.to_string(), shown)
 }
 
 /// Resolve a link target.
@@ -368,6 +475,72 @@ mod tests {
     #[test]
     fn a_document_with_no_links_produces_none() {
         assert!(extract("# Heading\n\nJust prose.\n").is_empty());
+    }
+
+    // -- Wiki-links --------------------------------------------------------
+
+    #[test]
+    fn all_four_wiki_spellings_are_recognised() {
+        let links = extract(
+            "[[Page Name]], [[Page Name|Display Text]], [[Page#Heading]], and \
+             [[folder/Page Name]].",
+        );
+
+        assert_eq!(links.len(), 4);
+        assert!(links.iter().all(|l| l.kind == LinkKind::Wiki));
+
+        assert_eq!(links[0].target, "Page Name");
+        assert_eq!(links[0].text, "Page Name");
+
+        assert_eq!(links[1].target, "Page Name");
+        assert_eq!(links[1].text, "Display Text");
+
+        assert_eq!(links[2].target, "Page#Heading");
+        assert_eq!(links[2].text, "Page § Heading");
+
+        assert_eq!(links[3].target, "folder/Page Name");
+    }
+
+    #[test]
+    fn a_display_text_containing_a_hash_is_not_a_heading() {
+        let links = extract("[[Page|Issue #1]]");
+        assert_eq!(links[0].target, "Page");
+        assert_eq!(links[0].text, "Issue #1");
+    }
+
+    #[test]
+    fn a_wiki_link_in_code_is_left_as_text() {
+        let inline = extract("Write `[[Page]]` to link.");
+        assert!(inline.is_empty(), "{inline:?}");
+
+        let fenced = extract("```\n[[Page]]\n```\n");
+        assert!(fenced.is_empty(), "{fenced:?}");
+    }
+
+    #[test]
+    fn an_embed_is_treated_as_a_link_to_the_page() {
+        let links = extract("![[Diagram]]");
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].target, "Diagram");
+        assert_eq!(&"![[Diagram]]"[links[0].range.clone()], "![[Diagram]]");
+    }
+
+    #[test]
+    fn unclosed_and_empty_brackets_are_not_links() {
+        assert!(extract("[[unclosed").is_empty());
+        assert!(extract("[[]]").is_empty());
+        assert!(extract("[[   ]]").is_empty());
+        assert!(extract("[[spans\na newline]]").is_empty());
+    }
+
+    #[test]
+    fn wiki_and_inline_links_come_back_in_one_reading_order() {
+        let links = extract("[first](a.md) then [[Second]] then [third](c.md)");
+
+        assert_eq!(links.len(), 3);
+        assert_eq!(links[0].target, "a.md");
+        assert_eq!(links[1].target, "Second");
+        assert_eq!(links[2].target, "c.md");
     }
 
     // -- Resolution --------------------------------------------------------

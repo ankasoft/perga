@@ -113,6 +113,53 @@ impl FilesConfig {
     }
 }
 
+/// The order wiki-link targets are looked up in. The `[wikilinks]` table's
+/// `resolution` key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WikiResolutionOrder {
+    /// An exact relative path first, then a filename search.
+    #[default]
+    PathFirst,
+    /// A filename search first, then an exact relative path.
+    FilenameFirst,
+}
+
+/// Wiki-links and the backlink index. The `[wikilinks]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct WikiLinkConfig {
+    /// Parse `[[Page]]` links and build the backlink index at all.
+    pub enabled: bool,
+    /// Extensions a page name is searched with, without the leading dot.
+    pub extensions: Vec<String>,
+    /// Which of the two resolution orders to use.
+    pub resolution: WikiResolutionOrder,
+    /// Build the index on startup rather than on first use.
+    pub index_on_start: bool,
+    /// Cache the index between runs.
+    pub cache: bool,
+    /// Where a file created from a broken wiki-link goes. Empty means the
+    /// active document's own directory.
+    pub new_file_dir: std::path::PathBuf,
+}
+
+impl Default for WikiLinkConfig {
+    fn default() -> Self {
+        WikiLinkConfig {
+            enabled: true,
+            extensions: ["md", "markdown"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+            resolution: WikiResolutionOrder::default(),
+            index_on_start: true,
+            cache: true,
+            new_file_dir: std::path::PathBuf::new(),
+        }
+    }
+}
+
 /// Vault-wide behaviour. The `[general]` table.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
