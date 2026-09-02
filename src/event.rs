@@ -13,6 +13,7 @@ use crossterm::event::{
 use crate::action::Action;
 use crate::app::{App, Focus, Message, Overlay, TabMode};
 use crate::config::keymap::{KeyChord, KeyContext, Resolution};
+use crate::ui::hints;
 use crate::ui::overlay::prompt::TextEdit;
 use crate::vault::walker::WalkEvent;
 
@@ -133,6 +134,9 @@ fn translate_text_line(chord: KeyChord) -> Vec<Action> {
     }
 }
 
+/// The modifiers that mean a character key is a command rather than text.
+const CTRL_OR_ALT: KeyModifiers = KeyModifiers::CONTROL.union(KeyModifiers::ALT);
+
 /// An open overlay swallows all input except the keys that close it and the
 /// ones that scroll it.
 fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
@@ -165,6 +169,35 @@ fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
             }
             _ => Vec::new(),
         },
+        Overlay::Hints { links, typed } => {
+            let count = links.len();
+
+            match chord.code {
+                KeyCode::Esc => vec![Action::Escape],
+                KeyCode::Backspace => {
+                    typed.pop();
+                    Vec::new()
+                }
+                KeyCode::Char(c) if !chord.modifiers.intersects(CTRL_OR_ALT) => {
+                    typed.push(c.to_ascii_lowercase());
+
+                    match hints::match_typed(typed, count) {
+                        hints::HintMatch::Complete(at) => {
+                            let link = links[at];
+                            vec![Action::Escape, Action::FollowHintedLink(link)]
+                        }
+                        hints::HintMatch::Partial => Vec::new(),
+                        // A key that matches nothing is a typo, not a
+                        // command: drop it rather than cancelling the mode.
+                        hints::HintMatch::None => {
+                            typed.pop();
+                            Vec::new()
+                        }
+                    }
+                }
+                _ => Vec::new(),
+            }
+        }
     }
 }
 

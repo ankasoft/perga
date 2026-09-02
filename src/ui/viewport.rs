@@ -35,6 +35,38 @@ impl<'a> Viewport<'a> {
     }
 }
 
+impl Viewport<'_> {
+    /// Where the focused link was drawn, as `(row, column, width)`.
+    ///
+    /// `None` while hint mode is open: the labels are the cue then, and a
+    /// second highlight competing with them only adds noise.
+    fn focused_link_placement(&self) -> Option<(usize, u16, u16)> {
+        use unicode_width::UnicodeWidthStr;
+
+        if self.app.overlay.is_some() {
+            return None;
+        }
+
+        let tab = self.app.tab();
+        let doc = tab.doc.as_ref()?;
+        let link = doc.links.get(tab.focused_link?)?;
+        let map = tab.layout.line_map();
+
+        let placement = crate::ui::hints::place(self.lines, &[link], tab.scroll, |link| {
+            map.line_of_offset(link.range.start)
+        })
+        .into_iter()
+        .next()
+        .flatten()?;
+
+        Some((
+            usize::from(placement.row),
+            placement.column,
+            u16::try_from(link.text.trim().width()).ok()?,
+        ))
+    }
+}
+
 impl Widget for Viewport<'_> {
     fn render(self, area: Rect, buf: &mut ratatui::buffer::Buffer) {
         let theme = &self.app.theme;
@@ -55,10 +87,24 @@ impl Widget for Viewport<'_> {
             return;
         };
 
+        let focused_link = self.focused_link_placement();
+
         let clipped: Vec<Line<'static>> = self
             .lines
             .iter()
-            .map(|line| clip_line(line, tab.hscroll, inner.width))
+            .enumerate()
+            .map(|(row, line)| {
+                let line = match focused_link {
+                    // Restyled before clipping, so a focused link that is
+                    // partly off the right-hand side is still marked on the
+                    // part that shows.
+                    Some((at, column, width)) if at == row => {
+                        restyle(line, column, width, theme.markdown.link_focused)
+                    }
+                    _ => line.clone(),
+                };
+                clip_line(&line, tab.hscroll, inner.width)
+            })
             .collect();
 
         Paragraph::new(clipped).render(inner, buf);
@@ -150,6 +196,61 @@ pub fn clip_line(line: &Line<'static>, offset: u16, width: u16) -> Line<'static>
 
         let style = out.last().map_or_else(Default::default, |s| s.style);
         out.push(Span::styled(CLIP_INDICATOR.to_string(), style));
+    }
+
+    Line::from(out).style(line.style)
+}
+
+/// Restyle a run of columns within a line.
+///
+/// Spans are split at the boundaries rather than replaced wholesale, so the
+/// styling of the text either side of the run survives.
+pub fn restyle(
+    line: &Line<'static>,
+    from: u16,
+    width: u16,
+    style: ratatui::style::Style,
+) -> Line<'static> {
+    let (from, width) = (usize::from(from), usize::from(width));
+    let until = from + width;
+
+    let mut out: Vec<Span<'static>> = Vec::with_capacity(line.spans.len() + 2);
+    let mut column = 0usize;
+
+    for span in &line.spans {
+        let mut current = String::new();
+        let mut current_inside = None;
+
+        for c in span.content.chars() {
+            let w = c.to_string().width();
+            let inside = column >= from && column < until;
+
+            if current_inside != Some(inside) && !current.is_empty() {
+                out.push(Span::styled(
+                    std::mem::take(&mut current),
+                    if current_inside == Some(true) {
+                        style
+                    } else {
+                        span.style
+                    },
+                ));
+            }
+
+            current_inside = Some(inside);
+            current.push(c);
+            column += w;
+        }
+
+        if !current.is_empty() {
+            out.push(Span::styled(
+                current,
+                if current_inside == Some(true) {
+                    style
+                } else {
+                    span.style
+                },
+            ));
+        }
     }
 
     Line::from(out).style(line.style)
@@ -247,6 +348,52 @@ mod tests {
         assert_eq!(clipped.spans[0].content, "aa");
         assert_eq!(clipped.spans[0].style.fg, Some(ratatui::style::Color::Red));
         assert_eq!(clipped.spans[1].style.fg, Some(ratatui::style::Color::Blue));
+    }
+
+    #[test]
+    fn restyling_splits_spans_at_the_boundaries() {
+        let styled = Line::from(vec![Span::styled(
+            "see the docs here".to_string(),
+            Style::default(),
+        )]);
+        let focus = Style::default().fg(ratatui::style::Color::Red);
+
+        let out = restyle(&styled, 8, 4, focus);
+        let text: Vec<&str> = out.spans.iter().map(|s| s.content.as_ref()).collect();
+
+        assert_eq!(text, ["see the ", "docs", " here"]);
+        assert_eq!(out.spans[1].style.fg, Some(ratatui::style::Color::Red));
+        assert_eq!(out.spans[0].style.fg, None);
+    }
+
+    #[test]
+    fn restyling_a_run_that_spans_two_spans_keeps_both_halves() {
+        let styled = Line::from(vec![
+            Span::styled("abcd".to_string(), Style::default()),
+            Span::styled("efgh".to_string(), Style::default()),
+        ]);
+        let focus = Style::default().fg(ratatui::style::Color::Red);
+
+        let out = restyle(&styled, 2, 4, focus);
+        let text: Vec<&str> = out.spans.iter().map(|s| s.content.as_ref()).collect();
+        assert_eq!(text, ["ab", "cd", "ef", "gh"]);
+        assert_eq!(out.spans[1].style.fg, Some(ratatui::style::Color::Red));
+        assert_eq!(out.spans[2].style.fg, Some(ratatui::style::Color::Red));
+        assert_eq!(out.spans[3].style.fg, None);
+    }
+
+    #[test]
+    fn restyling_nothing_leaves_the_line_alone() {
+        let styled = line("unchanged");
+        let out = restyle(
+            &styled,
+            0,
+            0,
+            Style::default().fg(ratatui::style::Color::Red),
+        );
+        let text: String = out.spans.iter().map(|s| s.content.as_ref()).collect();
+        assert_eq!(text, "unchanged");
+        assert!(out.spans.iter().all(|s| s.style.fg.is_none()));
     }
 
     #[test]

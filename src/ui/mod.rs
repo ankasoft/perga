@@ -18,6 +18,7 @@ use ratatui::widgets::{Paragraph, Widget};
 use ratatui::Frame;
 
 use crate::app::{App, Overlay};
+use crate::ui::hints::Hints;
 use crate::ui::layout::{SidebarPlacement, MIN_HEIGHT, MIN_WIDTH};
 use crate::ui::overlay::help::Help;
 use crate::ui::sidebar::SidebarPane;
@@ -80,6 +81,11 @@ fn render_with(app: &App, frame: &mut Frame, lines: &[Line<'static>], total: Opt
         Some(Overlay::Help { scroll }) => {
             Help::new(&app.keymap, &app.theme, *scroll).render(centred(area), buf);
         }
+        // Hints are drawn over the document rather than in a panel: a label
+        // only means anything on top of the link it belongs to.
+        Some(Overlay::Hints { links, typed }) => {
+            Hints::new(app, lines, links, typed).render(inner(frames.viewport), buf);
+        }
         None => {}
     }
 }
@@ -132,6 +138,16 @@ fn render_too_small(app: &App, area: Rect, buf: &mut ratatui::buffer::Buffer) {
     Paragraph::new(text)
         .alignment(Alignment::Center)
         .render(block, buf);
+}
+
+/// The content area inside a bordered pane.
+fn inner(area: Rect) -> Rect {
+    Rect {
+        x: area.x.saturating_add(1),
+        y: area.y.saturating_add(1),
+        width: area.width.saturating_sub(2),
+        height: area.height.saturating_sub(2),
+    }
 }
 
 /// Centre an overlay in the frame.
