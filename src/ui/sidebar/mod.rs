@@ -12,6 +12,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph, Widget};
 
 use crate::app::{App, Focus};
+use crate::ui::sidebar::backlinks::LinksMode;
 use crate::ui::sidebar::files::FilesMode;
 use crate::ui::sidebar::outline::OutlineMode;
 
@@ -120,6 +121,10 @@ impl<'a> SidebarPane<'a> {
                 let count = self.app.tab().doc.as_ref().map_or(0, |d| d.outline.len());
                 format!("{count} headings")
             }
+            SidebarMode::Links => {
+                let count = self.app.tab().doc.as_ref().map_or(0, |d| d.links.len());
+                format!("{count} outgoing")
+            }
             other => other.label().to_string(),
         };
 
@@ -186,8 +191,9 @@ impl Widget for SidebarPane<'_> {
         match self.app.sidebar.mode {
             SidebarMode::Files => FilesMode::new(self.app).render(content, buf),
             SidebarMode::Outline => OutlineMode::new(self.app).render(content, buf),
-            // The other two modes arrive with the features behind them.
-            SidebarMode::Search | SidebarMode::Links => {}
+            SidebarMode::Links => LinksMode::new(self.app).render(content, buf),
+            // The search mode arrives with the feature behind it.
+            SidebarMode::Search => {}
         }
     }
 }

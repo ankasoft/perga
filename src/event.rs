@@ -15,6 +15,7 @@ use crate::app::{App, Focus, Message, Overlay, TabMode};
 use crate::config::keymap::{KeyChord, KeyContext, Resolution};
 use crate::ui::hints;
 use crate::ui::overlay::prompt::TextEdit;
+use crate::vault::index::IndexEvent;
 use crate::vault::walker::WalkEvent;
 
 /// Translate one message into the actions it produces.
@@ -26,6 +27,10 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
         Message::SyntaxReady => vec![Action::SyntaxReady],
+        Message::Index(event) => vec![match event {
+            IndexEvent::Indexed(entries) => Action::IndexBatch(entries),
+            IndexEvent::Finished => Action::IndexFinished,
+        }],
         Message::Walk(event) => vec![match event {
             WalkEvent::Entries(entries) => Action::VaultEntries(entries),
             WalkEvent::Finished(total) => Action::VaultWalkFinished(total),
@@ -202,6 +207,36 @@ fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
             _ => Vec::new(),
         },
         Overlay::Find => translate_find_key(chord),
+        Overlay::Disambiguate {
+            candidates,
+            selected,
+            ..
+        } => {
+            let last = candidates.len().saturating_sub(1);
+            match chord.code {
+                KeyCode::Esc | KeyCode::Char('q') => vec![Action::Escape],
+                KeyCode::Enter | KeyCode::Char('l') => vec![Action::ChooseCandidate(*selected)],
+                KeyCode::Char('j') | KeyCode::Down => {
+                    *selected = (*selected + 1).min(last);
+                    Vec::new()
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    *selected = selected.saturating_sub(1);
+                    Vec::new()
+                }
+                // A one-key pick for the first nine candidates, which is more
+                // than any realistic collision produces.
+                KeyCode::Char(c) if c.is_ascii_digit() && c != '0' => {
+                    let at = c as usize - '1' as usize;
+                    if at <= last {
+                        vec![Action::ChooseCandidate(at)]
+                    } else {
+                        Vec::new()
+                    }
+                }
+                _ => Vec::new(),
+            }
+        }
         Overlay::Hints { links, typed } => {
             let count = links.len();
 

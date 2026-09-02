@@ -22,6 +22,7 @@ use crate::ui::hints::Hints;
 use crate::ui::layout::{SidebarPlacement, MIN_HEIGHT, MIN_WIDTH};
 use crate::ui::overlay::find::FindBar;
 use crate::ui::overlay::help::Help;
+use crate::ui::overlay::switcher::Picker;
 use crate::ui::sidebar::SidebarPane;
 use crate::ui::statusbar::StatusBar;
 use crate::ui::tabs::TabBar;
@@ -88,6 +89,31 @@ fn render_with(app: &App, frame: &mut Frame, lines: &[Line<'static>], total: Opt
             if let Some(find) = &app.tab().find {
                 FindBar::new(find, &app.theme).render(inner(frames.viewport), buf);
             }
+        }
+        Some(Overlay::Disambiguate {
+            page,
+            candidates,
+            selected,
+            ..
+        }) => {
+            let rows = candidates
+                .iter()
+                .map(|path| {
+                    Line::from(Span::styled(
+                        format!(" {}", path.display()),
+                        app.theme.sidebar.file,
+                    ))
+                })
+                .collect();
+
+            Picker::new(
+                &app.theme,
+                format!("[[{page}]] matches {} pages", candidates.len()),
+                " Enter open   Esc cancel ",
+                rows,
+                *selected,
+            )
+            .render(centred(area), buf);
         }
         // Hints are drawn over the document rather than in a panel: a label
         // only means anything on top of the link it belongs to.

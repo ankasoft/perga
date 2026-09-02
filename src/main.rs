@@ -247,6 +247,13 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
         let _ = walk_tx.send(Message::Walk(event));
     });
 
+    // The index build starts when the walk finishes and has said which files
+    // the cache does not already cover.
+    let index_tx = tx.clone();
+    app.on_index(move |event| {
+        let _ = index_tx.send(Message::Index(event));
+    });
+
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
 

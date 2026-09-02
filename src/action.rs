@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 use crate::ui::overlay::prompt::TextEdit;
 use crate::ui::sidebar::SidebarMode;
+use crate::vault::index::FileEntry;
 use crate::vault::walker::Entry;
 
 /// Every state change in perga.
@@ -38,6 +39,10 @@ pub enum Action {
     VaultWalkFinished(usize),
     /// The walk could not be completed.
     VaultWalkFailed(String),
+    /// A batch of freshly indexed files.
+    IndexBatch(Vec<(PathBuf, FileEntry)>),
+    /// The backlink index is complete.
+    IndexFinished,
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.
@@ -95,6 +100,8 @@ pub enum Action {
     HintMode,
     /// Follow the link a hint label selected. Not bindable; hint mode emits it.
     FollowHintedLink(usize),
+    /// Open the candidate a disambiguation overlay selected. Not bindable.
+    ChooseCandidate(usize),
     /// Go back in this tab's history.
     HistoryBack,
     /// Go forward in this tab's history.

@@ -6,13 +6,14 @@
 //! actions and hand them to [`App::update`].
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use crossbeam_channel::Receiver;
 use ratatui::layout::Rect;
 
 use crate::action::Action;
 use crate::config::keymap::Keymap;
-use crate::config::schema::{FilesConfig, GeneralConfig, UiConfig};
+use crate::config::schema::{FilesConfig, GeneralConfig, UiConfig, WikiLinkConfig};
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
 use crate::doc::links;
@@ -24,6 +25,7 @@ use crate::ui;
 use crate::ui::layout::{self, SidebarPlacement};
 use crate::ui::overlay::prompt::{TextEdit, TextInput};
 use crate::ui::sidebar::SidebarMode;
+use crate::vault::index::{self, IndexEvent, WikiResolution};
 use crate::vault::walker::{WalkEvent, WalkOptions};
 use crate::vault::Vault;
 
@@ -309,6 +311,17 @@ pub enum Overlay {
     /// The find bar. The state itself lives on the tab, which is what makes
     /// find per tab; this only says the bar has focus.
     Find,
+    /// A wiki-link that matched more than one page.
+    Disambiguate {
+        /// The page name as written.
+        page: String,
+        /// The candidates, relative to the vault root.
+        candidates: Vec<PathBuf>,
+        /// The heading fragment to apply once one is chosen.
+        anchor: Option<String>,
+        /// Which candidate is selected.
+        selected: usize,
+    },
     /// Link hint mode: every visible link wears a label.
     Hints {
         /// The links wearing labels, in reading order.
@@ -326,6 +339,13 @@ pub struct App {
     pub files: FilesConfig,
     /// The `[general]` table.
     pub general: GeneralConfig,
+    /// The `[wikilinks]` table.
+    pub wikilinks: WikiLinkConfig,
+    /// How the index reports back, once the walk has said what to index.
+    ///
+    /// Held rather than passed in because the build starts when the *walk*
+    /// finishes, which is several frames after the application was built.
+    index_sink: Option<Arc<dyn Fn(IndexEvent) + Send + Sync>>,
     /// The resolved theme. Nothing in the UI hardcodes a colour.
     pub theme: Theme,
     /// Syntax highlighting, which loads on a background thread.
@@ -382,6 +402,8 @@ impl App {
             vault: Vault::new(".", &files),
             files,
             general: GeneralConfig::default(),
+            wikilinks: WikiLinkConfig::default(),
+            index_sink: None,
             theme,
             highlighter: Highlighter::new(),
             keymap,
@@ -444,6 +466,14 @@ impl App {
             follow_symlinks: self.general.follow_symlinks,
         };
         self.vault.start_walk(options, sink);
+    }
+
+    /// Register how the index reports back.
+    ///
+    /// The build itself starts when the walk finishes and has said which files
+    /// the cache does not already cover.
+    pub fn on_index(&mut self, sink: impl Fn(IndexEvent) + Send + Sync + 'static) {
+        self.index_sink = Some(Arc::new(sink));
     }
 
     /// A renderer for the current theme at a given content width.
@@ -554,6 +584,13 @@ impl App {
 
             // -- Vault walking -------------------------------------------
             Action::VaultEntries(entries) => {
+                for entry in &entries {
+                    if !entry.is_dir && self.files.is_markdown(&entry.path) {
+                        self.vault
+                            .markdown
+                            .push((entry.path.clone(), entry.mtime, entry.size));
+                    }
+                }
                 self.vault.tree.insert_all(entries);
                 // A document opened before its row existed still gets its
                 // path expanded, as soon as the batch carrying it lands.
@@ -563,7 +600,14 @@ impl App {
                 self.vault.tree.complete = true;
                 self.vault.tree.entries = total;
                 self.reveal_active_document();
+                self.start_indexing();
             }
+            Action::IndexBatch(entries) => {
+                for (path, entry) in entries {
+                    self.vault.index.insert(path, entry);
+                }
+            }
+            Action::IndexFinished => self.finish_indexing(),
             Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
 
             // -- Sidebar ---------------------------------------------------
@@ -619,6 +663,7 @@ impl App {
             Action::FollowLinkInNewTab => self.follow_focused_link_in_new_tab(),
             Action::HintMode => self.open_hint_mode(),
             Action::FollowHintedLink(index) => self.follow_link(index),
+            Action::ChooseCandidate(index) => self.choose_candidate(index),
             Action::HistoryBack => self.navigate_history(false),
             Action::HistoryForward => self.navigate_history(true),
 
@@ -883,6 +928,12 @@ impl App {
         };
 
         let target = link.target.clone();
+
+        if link.kind == crate::doc::links::LinkKind::Wiki {
+            self.follow_wiki_link(&target);
+            return;
+        }
+
         let resolved = links::resolve(&target, doc.dir(), &self.vault.root, &self.files);
 
         match resolved {
@@ -1338,6 +1389,12 @@ impl App {
         };
 
         let target = link.target.clone();
+
+        if link.kind == crate::doc::links::LinkKind::Wiki {
+            self.follow_wiki_link(&target);
+            return;
+        }
+
         let resolved = links::resolve(&target, doc.dir(), &self.vault.root, &self.files);
 
         match resolved {
@@ -1353,6 +1410,211 @@ impl App {
             // Everything else does what it would have done in this tab.
             _ => self.follow_link(index),
         }
+    }
+
+    /// Follow a `[[wiki-link]]`, through the index rather than the filesystem.
+    fn follow_wiki_link(&mut self, target: &str) {
+        if !self.wikilinks.enabled {
+            self.status
+                .set("Wiki-links are disabled", Severity::Warning);
+            return;
+        }
+
+        if !self.vault.index.ready {
+            // Resolving against a half-built index would send the reader
+            // somewhere arbitrary and look like a bug in their notes.
+            self.status.set("Still indexing…", Severity::Info);
+            return;
+        }
+
+        let source = self.active_path().unwrap_or_default();
+
+        match self
+            .vault
+            .index
+            .resolve_wiki(target, &source, &self.wikilinks)
+        {
+            WikiResolution::Found { path, anchor } => {
+                let absolute = self.vault.absolute(&path);
+                self.navigate_to(&absolute, anchor);
+            }
+            WikiResolution::Ambiguous { candidates, anchor } => {
+                self.overlay = Some(Overlay::Disambiguate {
+                    page: target.to_string(),
+                    candidates,
+                    anchor,
+                    selected: 0,
+                });
+                self.focus = Focus::Overlay;
+            }
+            WikiResolution::Missing { page, .. } => {
+                // Section 9.11 turns this into an offer to create the file;
+                // until then it says what it could not find.
+                self.status
+                    .set(format!("No page `{page}` in this vault"), Severity::Warning);
+            }
+        }
+    }
+
+    /// Open the candidate the disambiguation overlay has selected.
+    pub fn choose_candidate(&mut self, index: usize) {
+        let Some(Overlay::Disambiguate {
+            candidates, anchor, ..
+        }) = self.overlay.clone()
+        else {
+            return;
+        };
+
+        let Some(path) = candidates.get(index) else {
+            return;
+        };
+        let absolute = self.vault.absolute(path);
+
+        self.close_overlay();
+        self.navigate_to(&absolute, anchor);
+    }
+
+    // -- The backlink index --------------------------------------------------
+
+    /// Load the cache and start indexing whatever it does not cover.
+    ///
+    /// Called when the walk finishes, which is when the set of files in the
+    /// vault is known and the cache can be validated against it file by file.
+    fn start_indexing(&mut self) {
+        if !self.wikilinks.enabled || !self.wikilinks.index_on_start {
+            self.vault.index.ready = true;
+            return;
+        }
+
+        if self.wikilinks.cache {
+            if let Some(cache) = index::load_cache(&self.vault.root) {
+                self.vault.index = crate::vault::index::Index::from_cache(cache);
+            }
+        }
+
+        // Anything the walk no longer reports has been deleted since the cache
+        // was written; its inbound links become broken, which is what they are.
+        let live: std::collections::BTreeSet<PathBuf> = self
+            .vault
+            .markdown
+            .iter()
+            .map(|(path, _, _)| path.clone())
+            .collect();
+        self.vault.index.retain_paths(&live);
+
+        let stale: Vec<PathBuf> = self
+            .vault
+            .markdown
+            .iter()
+            .filter(|(path, mtime, size)| !self.vault.index.is_current(path, *mtime, *size))
+            .map(|(path, _, _)| path.clone())
+            .collect();
+
+        self.vault.index.total = Some(self.vault.markdown.len());
+        self.vault.index.indexed = self.vault.markdown.len() - stale.len();
+
+        if stale.is_empty() {
+            self.vault.index.ready = true;
+            return;
+        }
+
+        let Some(sink) = self.index_sink.clone() else {
+            // No sink means no event loop — a test, or print mode. Indexing
+            // synchronously there would be a surprise; leaving it unbuilt is
+            // what the Links mode already knows how to show.
+            return;
+        };
+
+        self.vault.start_index(stale, move |event| sink(event));
+    }
+
+    /// Mark the index complete and write the cache.
+    fn finish_indexing(&mut self) {
+        self.vault.index.ready = true;
+        self.vault.cancel_index();
+
+        if !self.wikilinks.cache {
+            return;
+        }
+
+        // A cache that cannot be written costs a slower start next time and
+        // nothing else, so it is logged rather than shown.
+        if let Err(e) = index::save_cache(&self.vault.root, &self.vault.index.to_cache()) {
+            tracing::warn!("cannot write the index cache: {e}");
+        }
+    }
+
+    /// Build the index synchronously, for tests and for the paths with no
+    /// event loop behind them.
+    pub fn index_now(&mut self) {
+        let files: Vec<PathBuf> = self
+            .vault
+            .markdown
+            .iter()
+            .map(|(path, _, _)| path.clone())
+            .collect();
+
+        for path in files {
+            self.reindex(&path);
+        }
+
+        self.vault.index.total = Some(self.vault.markdown.len());
+        self.vault.index.ready = true;
+    }
+
+    /// Re-read one file into the index.
+    pub fn reindex(&mut self, relative: &Path) {
+        let absolute = self.vault.absolute(relative);
+
+        let Ok(bytes) = std::fs::read(&absolute) else {
+            self.vault.index.remove(relative);
+            return;
+        };
+        let metadata = std::fs::metadata(&absolute).ok();
+
+        let entry = index::entry_for(
+            &String::from_utf8_lossy(&bytes),
+            metadata.as_ref().and_then(|m| m.modified().ok()),
+            metadata.as_ref().map_or(0, |m| m.len()),
+        );
+        self.vault.index.insert(relative.to_path_buf(), entry);
+    }
+
+    /// Whether a link in the active document resolves to nothing.
+    ///
+    /// Used by the links sidebar to mark broken targets. A wiki-link is only
+    /// judged once the index is ready; until then nothing is called broken,
+    /// because nothing is yet known.
+    pub fn is_broken(&self, link: &crate::doc::links::Link) -> bool {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return false;
+        };
+
+        if link.kind == crate::doc::links::LinkKind::Wiki {
+            if !self.wikilinks.enabled || !self.vault.index.ready {
+                return false;
+            }
+            let source = self.active_path().unwrap_or_default();
+            return matches!(
+                self.vault
+                    .index
+                    .resolve_wiki(&link.target, &source, &self.wikilinks),
+                WikiResolution::Missing { .. }
+            );
+        }
+
+        matches!(
+            links::resolve(&link.target, doc.dir(), &self.vault.root, &self.files),
+            links::Resolved::Broken { .. }
+        )
+    }
+
+    /// Every document that links to the active one.
+    pub fn backlinks(&self) -> Vec<crate::vault::index::Backlink> {
+        let Some(path) = self.active_path() else {
+            return Vec::new();
+        };
+        self.vault.index.backlinks(&path, &self.wikilinks)
     }
 
     /// Move focus between the sidebar and the viewport.
@@ -1479,6 +1741,8 @@ pub enum Message {
     SyntaxReady,
     /// The vault walker reported something.
     Walk(WalkEvent),
+    /// The backlink indexer reported something.
+    Index(IndexEvent),
 }
 
 /// Run the application until it quits.
