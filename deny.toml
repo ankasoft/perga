@@ -1,0 +1,87 @@
+# cargo-deny configuration. Enforced in CI; see .github/workflows/ci.yml.
+#
+# Run locally with:
+#   cargo deny check
+
+[graph]
+# perga is Linux-only (Section 4). Checking other targets would flag dependencies
+# that are never compiled.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
+]
+all-features = true
+
+[advisories]
+# Any RUSTSEC vulnerability fails the build.
+version = 2
+yanked = "deny"
+# Section 16.6: deny vulnerabilities, warn on unmaintained crates. "workspace"
+# limits the unmaintained check to direct dependencies, so a transitively
+# unmaintained crate inside a mandated dependency does not gate CI.
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+# The permissive set actually present in the dependency tree. If a new dependency
+# introduces a licence outside this list, replace the dependency rather than
+# widening the list, and record the decision in docs/decisions.md.
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "MPL-2.0",
+    # `notify` (a dependency mandated by Section 5.2) is CC0-1.0, a public-domain
+    # dedication that is strictly more permissive than the rest of this list.
+    # See docs/decisions.md.
+    "CC0-1.0",
+]
+confidence-threshold = 0.93
+private = { ignore = true }
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+allow-wildcard-paths = false
+
+# Section 5.2 forbids anything that pulls a TLS stack or an HTTP client: perga has
+# no network feature and must not grow one by accident. Also banned: the async
+# runtime, which the single-background-thread architecture does not need.
+deny = [
+    { crate = "openssl", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "openssl-sys", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "native-tls", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "rustls", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "reqwest", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "hyper", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "ureq", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "curl", reason = "perga has no network feature (Section 5.2)" },
+    { crate = "tokio", reason = "threads and channels are sufficient (Section 5.2)" },
+    { crate = "onig", reason = "breaks static musl builds; use fancy-regex (Section 5.2)" },
+    { crate = "onig_sys", reason = "breaks static musl builds; use fancy-regex (Section 5.2)" },
+]
+
+# Duplicate major versions that are not avoidable from this crate: each is pulled
+# by a third-party dependency that has not yet upgraded. Reviewed on every
+# dependency bump; entries are removed as upstreams catch up.
+skip = [
+    # crossterm 0.29 depends on signal-hook 0.3; perga depends on 0.4 directly.
+    { crate = "signal-hook@0.3" },
+    # Transitive build-graph churn in the proc-macro and parser ecosystem.
+    { crate = "syn@2" },
+    { crate = "hashbrown@0.16" },
+    { crate = "itertools@0.14" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

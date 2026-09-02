@@ -1,0 +1,1 @@
+//! The confirmation dialog overlay.

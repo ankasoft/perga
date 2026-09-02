@@ -1,0 +1,23 @@
+#!/bin/sh
+# Reject commit messages containing AI-assistant attribution.
+#
+# Enforced mechanically rather than by convention. The same check runs in CI over
+# the commits in a push range; see .github/workflows/ci.yml.
+
+set -e
+
+msg_file="$1"
+
+pattern='claude|anthropic|co-authored-by|generated with|ai-assisted|🤖'
+
+if grep -qiE "$pattern" "$msg_file"; then
+    echo "commit-msg: rejected." >&2
+    echo >&2
+    echo "The commit message matches a forbidden pattern:" >&2
+    grep -inE "$pattern" "$msg_file" >&2
+    echo >&2
+    echo "Commit messages must not contain AI attribution of any kind." >&2
+    exit 1
+fi
+
+exit 0

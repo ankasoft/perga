@@ -1,0 +1,12 @@
+/target
+**/*.rs.bk
+*.pdb
+
+# Generated at test time, deliberately not committed (see Section 15.4).
+/tests/fixtures/vault/generated/
+
+# insta rejected snapshots
+*.snap.new
+
+# criterion output
+/criterion
