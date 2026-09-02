@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `perga note.md | head`, and quitting `less -R` early, no longer print
+  `writing to stdout: Broken pipe` and exit 1. A closed pipe is the end of the
+  job, not a failure.
+
 ## [0.1.0] — 2026-09-02
 
 The first release.

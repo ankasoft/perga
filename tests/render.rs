@@ -547,3 +547,39 @@ fn a_directory_piped_is_a_usage_error() {
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("directory"));
 }
+
+/// A reader quitting `less` early, or `| head`, closes the pipe mid-write.
+///
+/// Every well-behaved Unix tool treats that as the end of the job. perga used
+/// to print `writing to stdout: Broken pipe` and exit 1, which is exactly what
+/// `perga README.md | less -R` produces the moment the reader presses `q`.
+#[test]
+fn a_closed_pipe_is_not_an_error() {
+    use std::io::Read as _;
+    use std::process::{Command, Stdio};
+
+    let exe = env!("CARGO_BIN_EXE_perga");
+    let path = common::vault().join("gfm.md");
+
+    let mut child = Command::new(exe)
+        .arg(&path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the binary runs");
+
+    // Read a little and drop the pipe, the way `head` does.
+    let mut stdout = child.stdout.take().expect("a pipe");
+    let mut sip = [0u8; 64];
+    let _ = stdout.read(&mut sip);
+    drop(stdout);
+
+    let out = child.wait_with_output().expect("the child exits");
+    let stderr = String::from_utf8_lossy(&out.stderr);
+
+    assert!(
+        stderr.is_empty(),
+        "a closed pipe should be silent, got: {stderr}"
+    );
+    assert_eq!(out.status.code(), Some(0), "and should exit cleanly");
+}

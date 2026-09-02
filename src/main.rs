@@ -214,11 +214,17 @@ fn print_mode(cli: &Cli) -> Result<bool, (anyhow::Error, u8)> {
     let width = print_width(cli);
     let mut out = io::stdout().lock();
 
-    print::print(&document, &theme, width, colour, &mut out)
-        .context("writing to stdout")
-        .map_err(|e| (e, EXIT_RUNTIME))?;
-
-    Ok(true)
+    match print::print(&document, &theme, width, colour, &mut out) {
+        Ok(()) => Ok(true),
+        // `perga note.md | head` and a reader quitting `less` early both close
+        // the pipe mid-write. Every well-behaved Unix tool treats that as the
+        // end of the job, not as a failure: no message, exit zero.
+        Err(e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(true),
+        Err(e) => Err((
+            anyhow::Error::new(e).context("writing to stdout"),
+            EXIT_RUNTIME,
+        )),
+    }
 }
 
 /// The width print mode renders at.

@@ -804,6 +804,14 @@ The fragment lives at `.github/build-setup.yml` and not in
 `.github/workflows/`, where `dist` resolves the path from: a file of bare steps
 is not a valid workflow, and GitHub flags every one it finds in that directory.
 
+### D83b: a closed pipe is a clean exit
+
+Found by exercising the released tarball: `perga note.md | head` printed
+`writing to stdout: Broken pipe` and exited 1. Section 9.12 exists for
+`perga README.md | less -R`, and pressing `q` in `less` produces exactly that.
+Print mode now treats `BrokenPipe` as the end of the job — no message, exit
+zero — which is what every other tool that writes to a pipe does.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside
