@@ -1,0 +1,9 @@
+---
+source: tests/render.rs
+expression: "frame(&app, 30, 8)"
+---
+
+
+
+      terminal too small
+          need 40x10

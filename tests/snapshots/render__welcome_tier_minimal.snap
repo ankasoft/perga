@@ -1,0 +1,25 @@
+---
+source: tests/render.rs
+expression: "frame(&app, width, height)"
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      terminal too small
+          need 40x10

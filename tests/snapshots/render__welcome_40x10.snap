@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&app, width, height)"
+---
+ perga
+┌──────────────────┐───────────────────┐
+│FILES search      │ 0.1.0             │
+│outline links     │nd a document      │
+│                  │oggle sidebar      │
+│                  │l keybindings      │
+│                  │                   │
+│                  │                   │
+└──────────────────┘───────────────────┘
+ READ

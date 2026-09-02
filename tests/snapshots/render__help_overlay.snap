@@ -1,0 +1,44 @@
+---
+source: tests/render.rs
+expression: "frame(&app, 120, 40)"
+---
+ perga
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│FILES search outline links    ││                                                                                      │
+│                              ││                                                                                      │
+│           ┌ Keybindings ─────────────────────────────────────────────────────────────────────────────────┐           │
+│           │Global                                                                                        │           │
+│           │  q, Ctrl+Q                 Quit                                                              │           │
+│           │  ?                         Help overlay                                                      │           │
+│           │  Ctrl+B, Ctrl+E            Toggle the sidebar (Ctrl+E for tmux users)                        │           │
+│           │  Tab                       Focus the next pane                                               │           │
+│           │  Shift+Tab                 Focus the previous pane                                           │           │
+│           │  m 1, Alt+1                Sidebar mode: files                                               │           │
+│           │  m 2, Alt+2                Sidebar mode: search                                              │           │
+│           │  m 3, Alt+3                Sidebar mode: outline                                             │           │
+│           │  m 4, Alt+4                Sidebar mode: links                                               │           │
+│           │  m m                       Toggle mouse capture                                              │           │
+│           │  Ctrl+N                    New file                                                          │           │
+│           │  Ctrl+O                    Quick switcher                                                    │           │
+│           │  Ctrl+F                    Find in document                                                  │           │
+│           │  Ctrl+Shift+F, Ctrl+G      Search the project                                                │           │
+│           │  Ctrl+T                    New tab                                                           │           │
+│           │  Ctrl+W                    Close tab                                                         │           │
+│           │  g t, Ctrl+PageDown        Next tab                                                          │           │
+│           │  g T, Ctrl+PageUp          Previous tab                                                      │           │
+│           │  Esc                       Close the overlay, or leave edit mode                             │           │
+│           │  Ctrl+Z                    Suspend perga (resume with `fg`)                                  │           │
+│           │                                                                                              │           │
+│           │Reading                                                                                       │           │
+│           │  j, Down                   Scroll down one line                                              │           │
+│           │  k, Up                     Scroll up one line                                                │           │
+│           │  Ctrl+D                    Scroll down half a page                                           │           │
+│           │  Ctrl+U                    Scroll up half a page                                             │           │
+│           │  Space, PageDown           Scroll down a page                                                │           │
+│           │  b, PageUp                 Scroll up a page                                                  │           │
+│           │  g g                       Top of the document                                               │           │
+│           └──────────────────────────────────────────────────────────────────────────────────────────────┘           │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
