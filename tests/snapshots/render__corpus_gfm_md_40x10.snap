@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga gfm.md                      1/43
+┌──────────────────┐───────────────────█
+│FILES search      │                   ║
+│outline links     │                   ║
+│                  │ed alignment       ║
+│                  │                   ║
+│                  │────┬───────┐      ║
+│                  │tre │ Right │      ║
+└──────────────────┘───────────────────║
+ READ

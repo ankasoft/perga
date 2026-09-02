@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga README.md                   1/27
+┌──────────────────┐───────────────────█
+│FILES search      │                   █
+│outline links     │                   ║
+│                  │s tests. Every     ║
+│                  │rga renders appears║
+│                  │ in one of the     ║
+│                  │                   ║
+└──────────────────┘───────────────────║
+ READ

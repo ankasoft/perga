@@ -1,0 +1,28 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga wide.md                                                             1/15
+┌──────────────────────────────┐┌──────────────────────────────────────────────┐
+│FILES search outline links    ││# Wide content                                │
+│                              ││                                              │
+│                              ││A fenced code block with a line far wider     │
+│                              ││than any terminal:                            │
+│                              ││                                              │
+│                              ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
+│                              ││                                              │
+│                              ││A very wide table:                            │
+│                              ││                                              │
+│                              ││┌────────────┬────────────┬──────────────┬───…│
+│                              │││ column one │ column two │ column three │ co…│
+│                              ││├────────────┼────────────┼──────────────┼───…│
+│                              │││ value one  │ value two  │ value three  │ va…│
+│                              ││└────────────┴────────────┴──────────────┴───…│
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+└──────────────────────────────┘└──────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

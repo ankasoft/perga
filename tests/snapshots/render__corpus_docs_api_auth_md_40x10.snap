@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga docs/api/auth.md            1/14
+┌──────────────────┐───────────────────█
+│FILES search      │                   █
+│outline links     │                   █
+│                  │earer tokens. See  █
+│                  │walkthrough, and [[║
+│                  │r the rotation     ║
+│                  │                   ║
+└──────────────────┘───────────────────║
+ READ

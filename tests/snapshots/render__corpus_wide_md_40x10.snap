@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga wide.md                     1/15
+┌──────────────────┐───────────────────█
+│FILES search      │                   █
+│outline links     │                   █
+│                  │ with a line far   █
+│                  │inal:              ║
+│                  │                   ║
+│                  │aaaaaaaaaaaaaaaaaa…║
+└──────────────────┘───────────────────║
+ READ

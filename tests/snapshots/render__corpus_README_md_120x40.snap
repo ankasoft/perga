@@ -1,0 +1,44 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga README.md                                                                                                   1/22
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│FILES search outline links    ││# Fixture Vault                                                                       │
+│                              ││                                                                                      │
+│                              ││A corpus for perga's tests. Every Markdown feature perga renders appears somewhere    │
+│                              ││below or in one of the linked documents.                                              │
+│                              ││                                                                                      │
+│                              ││See the API docs and the setup guide.                                                 │
+│                              ││                                                                                      │
+│                              ││## Inline formatting                                                                  │
+│                              ││                                                                                      │
+│                              ││Text can be emphasised, strong, struck through, and inline code. An autolink:         │
+│                              ││https://example.com. A footnote reference[^note].                                     │
+│                              ││                                                                                      │
+│                              ││[note]: The footnote definition.                                                      │
+│                              ││                                                                                      │
+│                              ││## An image                                                                           │
+│                              ││                                                                                      │
+│                              ││[image: a diagram of the pipeline]                                                    │
+│                              ││                                                                                      │
+│                              ││## Raw HTML                                                                           │
+│                              ││                                                                                      │
+│                              ││<div class="callout">Raw HTML renders as literal text.</div>                          │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help

@@ -1,0 +1,28 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga unicode.md                                                          1/16
+┌──────────────────────────────┐┌──────────────────────────────────────────────┐
+│FILES search outline links    ││# Unicode                                     │
+│                              ││                                              │
+│                              ││## Kurulum Kılavuzu                           │
+│                              ││                                              │
+│                              ││Türkçe metin: ölçüm, şema, İstanbul, ığdır.   │
+│                              ││                                              │
+│                              ││## 日 本 語 の 見 出 し                              │
+│                              ││                                              │
+│                              ││日 本 語 の テ キ ス ト は 一 文 字 あ た り 二 列 を 占 め ま す 。 │
+│                              ││こ れ は 折 り 返 し の 計 算 に 影 響 し ま す 。             │
+│                              ││                                              │
+│                              ││## Emoji 🎉                                    │
+│                              ││                                              │
+│                              ││A line with emoji: 🎉  🚀  ✅  — and text after  │
+│                              ││them.                                         │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+│                              ││                                              │
+└──────────────────────────────┘└──────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

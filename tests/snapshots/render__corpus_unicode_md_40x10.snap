@@ -1,0 +1,14 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga unicode.md                  1/18
+┌──────────────────┐───────────────────█
+│FILES search      │                   █
+│outline links     │                   █
+│                  │                   ║
+│                  │                   ║
+│                  │, şema, İstanbul,  ║
+│                  │                   ║
+└──────────────────┘───────────────────║
+ READ

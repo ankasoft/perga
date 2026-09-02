@@ -1,0 +1,44 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, width, height)"
+---
+ perga gfm.md                                                                                                      1/43
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────█
+│FILES search outline links    ││# GFM features                                                                        █
+│                              ││                                                                                      █
+│                              ││## A table with mixed alignment                                                       █
+│                              ││                                                                                      █
+│                              ││┌─────────────┬────────┬───────┐                                                      █
+│                              │││ Left        │ Centre │ Right │                                                      █
+│                              ││├─────────────┼────────┼───────┤                                                      █
+│                              │││ a           │   b    │     c │                                                      █
+│                              │││ longer cell │   x    │ 12345 │                                                      █
+│                              ││└─────────────┴────────┴───────┘                                                      █
+│                              ││                                                                                      █
+│                              ││## A task list                                                                        █
+│                              ││                                                                                      █
+│                              ││- ☑ a finished task                                                                   █
+│                              ││- ☐ an unfinished task                                                                █
+│                              ││                                                                                      █
+│                              ││## Deeply nested lists                                                                █
+│                              ││                                                                                      █
+│                              ││- one                                                                                 █
+│                              ││    - two                                                                             █
+│                              ││        - three                                                                       █
+│                              ││            - four                                                                    █
+│                              ││                - five                                                                █
+│                              ││                                                                                      █
+│                              ││## A blockquote containing a list                                                     █
+│                              ││                                                                                      █
+│                              ││> Quoted text.                                                                        █
+│                              ││>                                                                                     █
+│                              ││> - first                                                                             █
+│                              ││> - second                                                                            █
+│                              ││>                                                                                     █
+│                              ││> More quoted text.                                                                   █
+│                              ││                                                                                      ║
+│                              ││## Code blocks                                                                        ║
+│                              ││                                                                                      ║
+│                              ││fn main() {                                                                           ║
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────║
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
