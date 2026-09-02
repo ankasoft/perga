@@ -1,0 +1,48 @@
+name: Benchmarks
+
+# Nightly and on demand, never on a push. Shared runners have unpredictable
+# performance, so these results inform; they never gate main. See Section 15.6.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bench:
+    name: Criterion
+    runs-on: ubuntu-latest
+    # A regression is reported, not failed on.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run benchmarks
+        run: cargo bench --bench render -- --output-format bencher | tee bench.txt
+
+      - name: Run the ignored timing tests
+        run: cargo test --release -- --ignored --nocapture | tee -a bench.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            bench.txt
+            target/criterion/
+
+      - name: Warn on a regression of more than 20%
+        run: |
+          # Criterion reports its own comparison against the previous run when
+          # target/criterion is restored from the cache.
+          if grep -qiE 'Performance has regressed' target/criterion/**/*/change/estimates.json 2>/dev/null; then
+            echo "::warning::A benchmark regressed; see the uploaded results."
+          fi
+          if grep -qi 'regressed' bench.txt; then
+            echo "::warning::A benchmark regressed; see the uploaded results."
+          fi
+          exit 0

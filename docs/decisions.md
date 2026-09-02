@@ -194,3 +194,107 @@ pseudo-terminal, leaving it untouched for ten seconds, and reading accumulated C
 time from `ps`: 0.00 seconds. This holds by construction — a dedicated input
 thread and a single blocking `recv` on the main loop, with no poll timeout
 anywhere — rather than by tuning.
+
+---
+
+## M2 — Markdown rendering pipeline
+
+### D18: link destinations are stripped from the rendered text
+
+`tui-markdown` renders `[label](target)` as `label (target)` and offers no
+option to suppress the destination. Section 8.1 says markup is never shown in
+read mode, and its layout sketch shows link labels alone. The wrapper therefore
+removes the destination, which `tui-markdown` emits as a recognisable triple —
+an unstyled `" ("`, the destination in the link style, an unstyled `")"`.
+
+Nothing is lost by this: links are extracted from the *source* in M4, where they
+can be resolved against the containing document's directory, which is the only
+place the target can be handled correctly anyway.
+
+### D19: code fences are not rendered
+
+`code_block_fence` is overridden to the empty string. The fences are markup, and
+the layout sketch in Section 8.1 shows a code block without them; the block's
+background and its highlighting are what mark it as code.
+
+This has a second benefit that turned out to matter more than the first: with
+the fences gone, a fenced code block renders exactly one line per source line,
+which is what makes the offset-to-line map *exact* inside code rather than
+interpolated. Find-in-document and edit-mode cursor round-tripping both land on
+the right line there as a result.
+
+### D20: the offset-to-line map is exact in code and proportional in prose
+
+Section 9.2 requires a bidirectional map between source byte offsets and
+rendered line numbers, and Section 20 warns that five features depend on it.
+
+Exactness is only achievable where the correspondence exists. A fenced code
+block renders one line per source line, so every source line gets its own entry.
+Prose is re-wrapped, so one source line may become several rendered lines and
+several source lines may share one; there its source lines are distributed over
+its rendered lines in proportion. Every *block boundary* is exact in both cases,
+which is what anchor navigation and outline synchronisation actually need, and
+the map is monotonic throughout, which is what find and link positioning need.
+
+### D21: a blank line separates blocks
+
+`tui-markdown` renders a block as its own lines and nothing more, so without a
+separator every paragraph, heading, and list runs into the next one. The
+renderer appends one blank line to each non-empty block. It lives in the block
+cache rather than in the layout so that heights, the line map, and the cache all
+agree on what a block's rendered height is.
+
+### D22: task markers and image placeholders are rewritten in the wrapper
+
+Two more places where `tui-markdown`'s output and this specification disagree,
+both handled in the same adapter layer as D18:
+
+- Section 9.2 asks for `☐`/`☑`; `tui-markdown` passes `[x]`/`[ ]` through as
+  literal text, in the same span as the list bullet. Only a line's first span is
+  examined, so an `[x]` written inside an item's prose is left alone.
+- Section 9.2 asks for `[image: alt text]` styled with `image_placeholder`;
+  `tui-markdown` writes `[img] alt text`. The rewrite is isolated in
+  `render_image_placeholder`, so a future Kitty or Sixel renderer replaces that
+  one function and nothing else in the pipeline.
+
+### D23: the layout is invalidated by document content, not by block count
+
+The first version of `RenderedDocument` reset itself when the width or the
+number of blocks changed. Editing a paragraph changes neither, so the layout
+happily served stale measurements — caught by the test that asserts an edit
+re-renders exactly one block, which re-rendered zero. `Document` now carries a
+hash of its source and the layout resets when that changes. The block cache
+survives the reset, so the 199 blocks an edit did not touch are still hits.
+
+### D24: scroll position is clamped only once the document is measured
+
+Block heights are only known after rendering, so the total is unknown until the
+whole document has been measured, and measurement is chunked so that jumping to
+the end of a 100,000-line document costs several frames rather than one long
+freeze. Until the total is known, scrolling is clamped to what *has* been
+measured, the title bar shows no position, and the scrollbar is indeterminate —
+rather than showing a guessed total that jumps when the guess is corrected.
+
+### D25: benchmark results
+
+Run on the development machine (Apple Silicon, macOS) with
+`cargo bench --bench render`. These are recorded, not asserted; see Section 15.6.
+
+| Benchmark | Result |
+|---|---|
+| `parse_document/1000_lines` | 113 µs |
+| `parse_document/10000_lines` | 1.10 ms |
+| `parse_document/100000_lines` | 11.3 ms |
+| `first_frame/1000_lines` | 1.23 ms |
+| `first_frame/10000_lines` | 1.26 ms |
+| `first_frame/100000_lines` | 1.26 ms |
+| `scroll_large_document/warm_cache` | 7.8 µs per frame |
+| `scroll_large_document/cold_cache` | 1.22 ms |
+
+The first-frame figure is flat from 1,000 to 100,000 lines, which is the
+windowed renderer doing what it is for: opening a document costs what the
+visible screen costs and nothing more. A scrolled frame against a warm cache is
+7.8 µs against the 16.6 ms that 60 fps allows.
+
+These are not the Linux numbers. Section 14's targets are to be re-measured on
+the target platform; see D9.
