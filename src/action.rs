@@ -9,7 +9,11 @@
 //! up in the help overlay. The rest are internal — resize notifications and
 //! background-worker progress — and are never reachable from a key.
 
+use std::path::PathBuf;
+
+use crate::ui::overlay::prompt::TextEdit;
 use crate::ui::sidebar::SidebarMode;
+use crate::vault::walker::Entry;
 
 /// Every state change in perga.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,6 +30,14 @@ pub enum Action {
     /// The background thread finished loading the syntax sets, so code blocks
     /// drawn plain can be drawn highlighted.
     SyntaxReady,
+
+    // -- Vault walking -----------------------------------------------------
+    /// A batch of entries from the vault walker.
+    VaultEntries(Vec<Entry>),
+    /// The walk finished, having found this many entries.
+    VaultWalkFinished(usize),
+    /// The walk could not be completed.
+    VaultWalkFailed(String),
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.
@@ -127,8 +139,16 @@ pub enum Action {
     TreeToggleHidden,
     /// Show or hide non-Markdown files in the tree.
     TreeToggleAllFiles,
-    /// Filter the tree by name.
+    /// Start filtering the tree by name.
     TreeFilter,
+    /// Edit the tree filter. Only reachable while the filter input is open.
+    TreeFilterEdit(TextEdit),
+    /// Keep the filter and hand focus back to the tree.
+    TreeFilterAccept,
+    /// Abandon the filter and restore the whole tree.
+    TreeFilterCancel,
+    /// Open a specific path, resolved against the vault root.
+    OpenPath(PathBuf),
     /// Rename the selected tree entry.
     TreeRename,
 

@@ -16,13 +16,14 @@ use clap_complete::Shell as CompleteShell;
 use crossbeam_channel::{unbounded, Sender};
 
 use perga::app::{self, App, Message};
-use perga::cli::{Cli, Shell};
+use perga::cli::{Cli, Shell, SidebarModeArg};
 use perga::config::keymap::Keymap;
-use perga::config::schema::UiConfig;
+use perga::config::schema::{FilesConfig, UiConfig};
 use perga::doc::document::Document;
 use perga::doc::print;
 use perga::terminal;
 use perga::theme::Theme;
+use perga::ui::sidebar::SidebarMode;
 
 /// Exit code for a runtime error.
 const EXIT_RUNTIME: u8 = 1;
@@ -202,13 +203,29 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
     if cli.no_mouse {
         ui_config.mouse = false;
     }
+    if let Some(mode) = cli.sidebar {
+        ui_config.sidebar_default_mode = match mode {
+            SidebarModeArg::Files => SidebarMode::Files,
+            SidebarModeArg::Search => SidebarMode::Search,
+            SidebarModeArg::Outline => SidebarMode::Outline,
+            SidebarModeArg::Links => SidebarMode::Links,
+        };
+    }
+
+    let mut files_config = FilesConfig::default();
+    if cli.all {
+        files_config.show_all = true;
+    }
+    if cli.no_gitignore {
+        files_config.respect_gitignore = false;
+    }
 
     let mut theme = Theme::dark();
     if no_color() {
         theme.strip_colors();
     }
 
-    let mut app = App::new(theme, Keymap::defaults(), ui_config);
+    let mut app = App::new(theme, Keymap::defaults(), ui_config, files_config);
 
     match &target {
         Target::Vault(root) => app.set_vault_root(root),
@@ -222,6 +239,14 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
 
     let (tx, rx) = unbounded();
     spawn_input_thread(tx.clone());
+
+    // The walk streams into the same channel as everything else, so the first
+    // frame is painted from an empty tree and the tree fills in behind it.
+    let walk_tx = tx.clone();
+    app.start_walk(move |event| {
+        let _ = walk_tx.send(Message::Walk(event));
+    });
+
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
 

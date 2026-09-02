@@ -13,6 +13,8 @@ use crossterm::event::{
 use crate::action::Action;
 use crate::app::{App, Focus, Message, Overlay, TabMode};
 use crate::config::keymap::{KeyChord, KeyContext, Resolution};
+use crate::ui::overlay::prompt::TextEdit;
+use crate::vault::walker::WalkEvent;
 
 /// Translate one message into the actions it produces.
 ///
@@ -23,6 +25,11 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
         Message::SyntaxReady => vec![Action::SyntaxReady],
+        Message::Walk(event) => vec![match event {
+            WalkEvent::Entries(entries) => Action::VaultEntries(entries),
+            WalkEvent::Finished(total) => Action::VaultWalkFinished(total),
+            WalkEvent::Failed(reason) => Action::VaultWalkFailed(reason),
+        }],
     }
 }
 
@@ -59,6 +66,13 @@ fn translate_key(app: &mut App, key: KeyEvent) -> Vec<Action> {
         return translate_overlay_key(app, chord);
     }
 
+    // An open text line owns every key it can use, the same way edit mode owns
+    // the text area. Without that, typing `a` into a filter would toggle
+    // non-Markdown files instead.
+    if app.sidebar.filter.is_some() {
+        return translate_text_line(chord);
+    }
+
     let context = context_for(app);
     match app.keymap.resolve(context, chord) {
         Resolution::Action(action) => {
@@ -86,6 +100,36 @@ fn context_for(app: &App) -> KeyContext {
         KeyContext::Sidebar
     } else {
         KeyContext::Viewport
+    }
+}
+
+/// Keys typed into the tree filter line.
+///
+/// Everything the line cannot use is swallowed rather than falling through to
+/// the keymap: a stray `q` while typing a filter must not quit perga.
+fn translate_text_line(chord: KeyChord) -> Vec<Action> {
+    let edit = |edit| vec![Action::TreeFilterEdit(edit)];
+    let ctrl = chord.modifiers.contains(KeyModifiers::CONTROL);
+
+    match chord.code {
+        KeyCode::Esc => vec![Action::TreeFilterCancel],
+        KeyCode::Enter => vec![Action::TreeFilterAccept],
+        KeyCode::Backspace => edit(TextEdit::Backspace),
+        KeyCode::Delete => edit(TextEdit::Delete),
+        KeyCode::Left => edit(TextEdit::Left),
+        KeyCode::Right => edit(TextEdit::Right),
+        KeyCode::Home => edit(TextEdit::Home),
+        KeyCode::End => edit(TextEdit::End),
+        // The selection still moves while the filter is being typed, so the
+        // user can type and choose without leaving the line.
+        KeyCode::Down => vec![Action::TreeDown],
+        KeyCode::Up => vec![Action::TreeUp],
+        KeyCode::Char('u') if ctrl => edit(TextEdit::Clear),
+        KeyCode::Char('w') if ctrl => edit(TextEdit::DeleteWordBack),
+        KeyCode::Char(c) if !ctrl && !chord.modifiers.contains(KeyModifiers::ALT) => {
+            edit(TextEdit::Insert(c))
+        }
+        _ => Vec::new(),
     }
 }
 
@@ -158,11 +202,16 @@ pub fn exit_code_for_signal(signal: i32) -> u8 {
 mod tests {
     use super::*;
     use crate::config::keymap::Keymap;
-    use crate::config::schema::UiConfig;
+    use crate::config::schema::{FilesConfig, UiConfig};
     use crate::theme::Theme;
 
     fn app() -> App {
-        let mut app = App::new(Theme::dark(), Keymap::defaults(), UiConfig::default());
+        let mut app = App::new(
+            Theme::dark(),
+            Keymap::defaults(),
+            UiConfig::default(),
+            FilesConfig::default(),
+        );
         app.update(Action::Resize(120, 40));
         app
     }

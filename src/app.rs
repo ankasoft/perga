@@ -12,7 +12,7 @@ use ratatui::layout::Rect;
 
 use crate::action::Action;
 use crate::config::keymap::Keymap;
-use crate::config::schema::UiConfig;
+use crate::config::schema::{FilesConfig, GeneralConfig, UiConfig};
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
 use crate::doc::render::{RenderedDocument, Renderer};
@@ -20,7 +20,10 @@ use crate::terminal::{self, Tui};
 use crate::theme::Theme;
 use crate::ui;
 use crate::ui::layout::{self, SidebarPlacement};
+use crate::ui::overlay::prompt::{TextEdit, TextInput};
 use crate::ui::sidebar::SidebarMode;
+use crate::vault::walker::{WalkEvent, WalkOptions};
+use crate::vault::Vault;
 
 /// Which pane has focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -108,6 +111,11 @@ pub struct Sidebar {
     pub width: u16,
     /// Which of the four modes is showing.
     pub mode: SidebarMode,
+    /// The tree filter being typed, if the filter line is open.
+    ///
+    /// Separate from the filter the tree is applying: closing the line keeps
+    /// the filter, and cancelling it clears both.
+    pub filter: Option<TextInput>,
 }
 
 /// How prominent a status message is.
@@ -154,8 +162,12 @@ pub enum Overlay {
 
 /// The whole application state.
 pub struct App {
-    /// The directory paths in the title bar and the tree are relative to.
-    pub vault_root: PathBuf,
+    /// The open directory: its root, its tree, and its index.
+    pub vault: Vault,
+    /// The `[files]` table, which the tree and the walker both read.
+    pub files: FilesConfig,
+    /// The `[general]` table.
+    pub general: GeneralConfig,
     /// The resolved theme. Nothing in the UI hardcodes a colour.
     pub theme: Theme,
     /// Syntax highlighting, which loads on a background thread.
@@ -191,11 +203,12 @@ pub struct App {
 
 impl App {
     /// A new application with built-in defaults.
-    pub fn new(theme: Theme, keymap: Keymap, ui: UiConfig) -> Self {
+    pub fn new(theme: Theme, keymap: Keymap, ui: UiConfig, files: FilesConfig) -> Self {
         let sidebar = Sidebar {
             visible: ui.sidebar_visible,
             width: ui.sidebar_width,
             mode: ui.sidebar_default_mode,
+            filter: None,
         };
         let mouse_capture = ui.mouse;
 
@@ -207,7 +220,9 @@ impl App {
         }
 
         App {
-            vault_root: PathBuf::from("."),
+            vault: Vault::new(".", &files),
+            files,
+            general: GeneralConfig::default(),
             theme,
             highlighter: Highlighter::new(),
             keymap,
@@ -236,7 +251,14 @@ impl App {
         self.tab()
             .doc
             .as_ref()
-            .map(|doc| doc.display_path(&self.vault_root))
+            .map(|doc| doc.display_path(&self.vault.root))
+    }
+
+    /// The active document's path relative to the vault root, for matching
+    /// against tree rows.
+    pub fn active_path(&self) -> Option<PathBuf> {
+        let doc = self.tab().doc.as_ref()?;
+        self.vault.relative(&doc.path).map(Path::to_path_buf)
     }
 
     /// The scroll position, as `current/total`, once the total is known.
@@ -247,9 +269,22 @@ impl App {
         Some((tab.scroll.saturating_add(1).min(total.max(1)), total))
     }
 
-    /// Point the vault root at a directory.
+    /// Point the vault root at a directory, discarding any tree already built
+    /// for the previous one.
     pub fn set_vault_root(&mut self, root: impl AsRef<Path>) {
-        self.vault_root = root.as_ref().to_path_buf();
+        self.vault = Vault::new(root.as_ref(), &self.files);
+    }
+
+    /// Start walking the vault, reporting each batch back through `sink`.
+    ///
+    /// The sink is what turns a worker message into an [`Action`]; nothing on
+    /// the walker thread touches application state.
+    pub fn start_walk(&mut self, sink: impl Fn(WalkEvent) + Send + Sync + 'static) {
+        let options = WalkOptions {
+            respect_gitignore: self.files.respect_gitignore,
+            follow_symlinks: self.general.follow_symlinks,
+        };
+        self.vault.start_walk(options, sink);
     }
 
     /// A renderer for the current theme at a given content width.
@@ -275,6 +310,8 @@ impl App {
         }
         let tab = &mut self.tabs[self.active_tab];
         *tab = Tab::with_document(doc);
+
+        self.reveal_active_document();
     }
 
     /// The layout for the current state and terminal size.
@@ -349,6 +386,53 @@ impl App {
             Action::ScrollRight => self.scroll_horizontally(1),
             Action::PrevHeading => self.scroll_to_heading(false),
             Action::NextHeading => self.scroll_to_heading(true),
+
+            // -- Vault walking -------------------------------------------
+            Action::VaultEntries(entries) => {
+                self.vault.tree.insert_all(entries);
+                // A document opened before its row existed still gets its
+                // path expanded, as soon as the batch carrying it lands.
+                self.reveal_active_document();
+            }
+            Action::VaultWalkFinished(total) => {
+                self.vault.tree.complete = true;
+                self.vault.tree.entries = total;
+                self.reveal_active_document();
+            }
+            Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
+
+            // -- Sidebar tree ---------------------------------------------
+            Action::TreeDown => self.vault.tree.move_selection(1),
+            Action::TreeUp => self.vault.tree.move_selection(-1),
+            Action::TreeExpandOrOpen => self.tree_expand_or_open(),
+            Action::TreeCollapseOrParent => self.vault.tree.collapse_selected(),
+            Action::TreeToggleHidden => {
+                self.vault.tree.toggle_hidden();
+                let state = if self.vault.tree.include_hidden {
+                    "shown"
+                } else {
+                    "hidden"
+                };
+                self.status
+                    .set(format!("Dotted entries {state}"), Severity::Info);
+            }
+            Action::TreeToggleAllFiles => {
+                self.vault.tree.toggle_all_files();
+                let state = if self.vault.tree.show_all {
+                    "All files"
+                } else {
+                    "Markdown files only"
+                };
+                self.status.set(state, Severity::Info);
+            }
+            Action::TreeFilter => self.open_tree_filter(),
+            Action::TreeFilterEdit(edit) => self.edit_tree_filter(edit),
+            Action::TreeFilterAccept => self.sidebar.filter = None,
+            Action::TreeFilterCancel => {
+                self.sidebar.filter = None;
+                self.vault.tree.set_filter(None);
+            }
+            Action::OpenPath(path) => self.open_path(&path),
 
             // Actions whose handlers arrive with the features that need them.
             _ => {}
@@ -449,6 +533,84 @@ impl App {
         }
     }
 
+    /// Expand the selected directory, or open the selected file.
+    fn tree_expand_or_open(&mut self) {
+        if self.vault.tree.expand_selected() {
+            return;
+        }
+
+        let Some(node) = self.vault.tree.selected() else {
+            return;
+        };
+        let path = node.path.clone();
+        self.open_path(&path);
+    }
+
+    /// Open a path from the tree, relative to the vault root.
+    ///
+    /// A file perga does not render is handed to the desktop opener rather
+    /// than shown as mojibake.
+    fn open_path(&mut self, relative: &Path) {
+        let absolute = self.vault.absolute(relative);
+
+        if !self.files.is_markdown(&absolute) {
+            match crate::vault::open_external(&absolute) {
+                Ok(()) => self.status.set(
+                    format!("Opened {} externally", relative.display()),
+                    Severity::Info,
+                ),
+                Err(e) => self
+                    .status
+                    .set(format!("Cannot open externally: {e}"), Severity::Error),
+            }
+            return;
+        }
+
+        match Document::load(&absolute) {
+            Ok(document) => {
+                self.open(document);
+                // A sidebar drawn over the viewport is in the way of the
+                // document it has just opened.
+                if self.sidebar.visible
+                    && self.frames().sidebar_placement == SidebarPlacement::Overlaid
+                {
+                    self.sidebar.visible = false;
+                    self.focus = Focus::Viewport;
+                }
+            }
+            Err(e) => self.status.set(
+                format!("Cannot read {}: {e}", relative.display()),
+                Severity::Error,
+            ),
+        }
+    }
+
+    /// Expand the tree down to the active document and select it.
+    fn reveal_active_document(&mut self) {
+        if let Some(path) = self.active_path() {
+            self.vault.tree.reveal(&path);
+        }
+    }
+
+    /// Open the tree filter line, pre-filled with whatever filter is applied.
+    fn open_tree_filter(&mut self) {
+        let existing = self.vault.tree.filter().unwrap_or_default().to_string();
+        self.sidebar.filter = Some(TextInput::with_value(existing));
+        self.sidebar.visible = true;
+        self.focus = Focus::Sidebar;
+    }
+
+    /// Apply one edit to the filter line, filtering as the user types.
+    fn edit_tree_filter(&mut self, edit: TextEdit) {
+        let Some(input) = &mut self.sidebar.filter else {
+            return;
+        };
+
+        input.apply(edit);
+        let value = input.value().to_string();
+        self.vault.tree.set_filter(Some(value));
+    }
+
     /// Move focus between the sidebar and the viewport.
     ///
     /// Edit mode locks focus to the viewport, and an open overlay owns focus
@@ -527,6 +689,11 @@ impl App {
             return;
         }
 
+        if self.sidebar.filter.is_some() {
+            self.update(Action::TreeFilterCancel);
+            return;
+        }
+
         if !self.keymap.pending().is_empty() {
             self.keymap.clear_pending();
             self.status.pending = None;
@@ -557,6 +724,8 @@ pub enum Message {
     Signal(i32),
     /// Syntax highlighting finished loading.
     SyntaxReady,
+    /// The vault walker reported something.
+    Walk(WalkEvent),
 }
 
 /// Run the application until it quits.
@@ -620,7 +789,12 @@ mod tests {
 
     /// An app sized like a comfortable terminal.
     fn app() -> App {
-        let mut app = App::new(Theme::dark(), Keymap::defaults(), UiConfig::default());
+        let mut app = App::new(
+            Theme::dark(),
+            Keymap::defaults(),
+            UiConfig::default(),
+            FilesConfig::default(),
+        );
         app.update(Action::Resize(120, 40));
         app
     }
