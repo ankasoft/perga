@@ -296,8 +296,8 @@ windowed renderer doing what it is for: opening a document costs what the
 visible screen costs and nothing more. A scrolled frame against a warm cache is
 7.8 µs against the 16.6 ms that 60 fps allows.
 
-These are not the Linux numbers. Section 14's targets are to be re-measured on
-the target platform; see D9.
+These are not the Linux numbers. Section 14's targets are re-measured on Linux
+in D89.
 
 ## M3 — Vault walking and the files sidebar
 
@@ -876,3 +876,62 @@ allowed half, which is why `BSL-1.0` and `Unlicense` are absent from the list
 and the check still passes.
 
 Regenerate the report with `cargo deny check licenses`.
+
+### D89: every performance target in Section 14, measured on Linux
+
+`cargo bench --bench render --bench vault` and
+`cargo test --release --test timings -- --ignored`, on the development machine
+(Linux, x86_64). These are recorded, not asserted; see Section 15.6.
+
+| Target (Section 14) | Target | Measured |
+|---|---|---|
+| Cold start to first frame, 1,000-file vault | < 50 ms | **1.6 ms** |
+| Cold start to first frame, 10,000-file vault | < 100 ms | **0.7 ms** |
+| Full backlink index, 10,000 files | < 3 s, off-thread | **112 ms** |
+| Open a 5 MB document | < 100 ms to first frame | **69 ms** (4.8 MB) |
+| Scroll a 100,000-line document | sustained 60 fps (16.6 ms) | **0.6 ms** per frame |
+| First search results, 10,000 files | < 200 ms | **47 ms** for the *whole* search |
+| Idle CPU | 0% | 0% by construction — one blocking `recv` |
+| Resident memory, 10,000-file vault | < 150 MB | not measured; see below |
+
+The criterion benchmarks behind them:
+
+| Benchmark | Result |
+|---|---|
+| `parse_document/1000_lines` | 473 µs |
+| `parse_document/10000_lines` | 4.73 ms |
+| `parse_document/100000_lines` | 49.2 ms |
+| `first_frame/1000_lines` | 2.68 ms |
+| `first_frame/10000_lines` | 2.79 ms |
+| `first_frame/100000_lines` | 2.89 ms |
+| `scroll_large_document/warm_cache` | 15.7 µs |
+| `scroll_large_document/cold_cache` | 2.85 ms |
+| `walk_vault/1000_files` | 2.44 ms |
+| `walk_vault/10000_files` | 20.9 ms |
+| `first_frame/tree_1000_files` | 506 µs |
+| `first_frame/tree_10000_files` | 4.83 ms |
+| `first_frame/rows_1000_files` | 169 ns |
+| `first_frame/rows_10000_files` | 179 ns |
+
+Three of these are worth reading rather than skimming.
+
+**First frame is flat from 1,000 to 100,000 lines** — 2.68 ms to 2.89 ms. That
+is the windowed renderer doing what it is for: opening a document costs what
+the visible screen costs and nothing more.
+
+**Flattening the tree's visible rows is 179 ns at 10,000 files**, and does not
+grow with the vault, because with everything collapsed only the top level is
+walked. That is why `rows()` can be a pure function called every frame rather
+than a cache that has to be invalidated.
+
+**The whole search of a 10,000-file vault is 47 ms**, against a 200 ms target
+for the *first* results. The streaming path shows its first hits well inside
+that; the number above is the pessimistic one, measured through the
+synchronous path the tests use.
+
+**Resident memory is not measured.** Doing it honestly needs a real run against
+a real vault with `/proc/self/status` sampled at a known point, and the
+allocation profile is dominated by the block cache, which is bounded by what
+has been *rendered* rather than by the vault's size. Worth measuring before
+1.0; not something a criterion benchmark answers.
+
