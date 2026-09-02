@@ -109,3 +109,88 @@ verified locally and must be confirmed by CI or by the owner on Linux:
 - `SIGTSTP`/`SIGCONT` suspend and resume against a Linux terminal (Section 12).
 
 Every one of these is exercised by the Linux CI jobs, which are the authority.
+
+---
+
+## M1 — Terminal shell and event loop
+
+### D10: a library target alongside the binary
+
+Section 6 lists `src/main.rs` as the only entry point, but Section 15.3 requires
+integration tests in `tests/` that drive the application by feeding it `Action`
+sequences, and Section 15.2 requires snapshot tests that render to
+`ratatui::backend::TestBackend`. An integration test cannot reach inside a binary
+crate. `src/lib.rs` therefore exposes every module and `src/main.rs` is a thin
+wrapper that owns only argument parsing, terminal setup and teardown, the panic
+hook, and the worker threads. The module layout of Section 6 is otherwise
+unchanged.
+
+### D11: `Terminal::clear()` is not called during setup
+
+`ratatui`'s `Terminal::clear` reads the cursor position back from the terminal so
+it can restore it afterwards. That is a full round trip: it costs a meaningful part
+of the 50 ms first-frame budget in Section 14, and on a terminal that does not
+answer the query it fails outright — which is how it was found, in a pseudo-
+terminal harness where startup aborted with "The cursor position could not be read
+within a normal duration".
+
+Entering the alternate screen already presents a blank screen and the first draw
+paints all of it, so the call is unnecessary at startup. It is still made when
+resuming from `SIGTSTP`, where the shell has genuinely written over the screen and
+the frame must be repainted rather than diffed.
+
+### D12: `terminal::setup` restores on its own failure
+
+The first version returned the error from a partially completed setup, leaving raw
+mode and the alternate screen enabled with no handle for the caller to clean up
+with — the exact failure Section 13 forbids. `setup` now wraps its work and calls
+`restore` before returning any error, and `main` calls `restore` on its error path
+as well. `restore` is idempotent, so the overlap is harmless.
+
+### D13: `Ctrl+C` is not remappable
+
+Section 12 does not list `Ctrl+C`, but Section 7.3 says an overlay swallows all
+input "except `Esc` (close) and `Ctrl+C` (quit)". It is therefore handled ahead of
+the keymap in `event.rs` and is not in the binding table: a user who remapped it
+away could otherwise be left with no way out of a wedged overlay.
+
+### D14: the status bar and welcome screen read their keys from the keymap
+
+Section 8.3 requires the help overlay to be generated from the keymap so it cannot
+drift. The same argument applies to the two other places that show a key to the
+user — the status bar hint row and the welcome screen's onboarding block — so both
+look their keys up through `Keymap::binding_for` rather than hardcoding them. A
+remap moves all three together.
+
+### D15: a terminal resize does not overwrite the chosen sidebar width
+
+Clamping `Sidebar::width` on every resize destroyed the user's choice: shrinking
+the terminal to 30 columns and growing it back left the sidebar at its minimum
+width for the rest of the session. The chosen width is now stored unclamped and
+clamped only by the layout pass, so a temporary shrink narrows what is drawn and
+widening restores it. Explicit `<` and `>` presses still clamp, because those are
+the user setting a width against a terminal they can see.
+
+### D16: panic-hook restoration is verified through a pseudo-terminal, by hand
+
+Section 13 asks for the panic hook to be tested "by injecting a panic behind a
+hidden debug flag". The flag is `--debug-panic`, hidden from `--help`. It cannot
+be exercised by `cargo test`: raw mode fails without a controlling terminal, so
+the assertion would pass for the wrong reason. It was verified by running the
+binary under a pseudo-terminal and confirming that the alternate screen is left,
+mouse capture and bracketed paste are disabled, and the cursor is shown, all
+before the panic message is printed. Reproduce with:
+
+```sh
+script -q /dev/null perga --debug-panic
+```
+
+The terminal must be usable afterwards and the panic message readable.
+
+### D17: idle CPU measured at zero
+
+Section 14 requires 0% CPU at idle. Measured by running the release binary under a
+pseudo-terminal, leaving it untouched for ten seconds, and reading accumulated CPU
+time from `ps`: 0.00 seconds. This holds by construction — a dedicated input
+thread and a single blocking `recv` on the main loop, with no poll timeout
+anywhere — rather than by tuning.
