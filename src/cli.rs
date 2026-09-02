@@ -81,6 +81,14 @@ pub struct Cli {
     /// Write debug logs to this file.
     #[arg(long, value_name = "FILE")]
     pub log: Option<PathBuf>,
+
+    /// Panic immediately after the terminal is set up.
+    ///
+    /// Hidden: this exists so the panic hook's terminal restoration can be
+    /// exercised for real, which is not something an automated test can do
+    /// without a pseudo-terminal. See `docs/decisions.md`.
+    #[arg(long, hide = true)]
+    pub debug_panic: bool,
 }
 
 /// The sidebar mode selected by `--sidebar`.
