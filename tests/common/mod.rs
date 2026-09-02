@@ -113,6 +113,13 @@ pub fn large_document(lines: usize) -> PathBuf {
         }
     }
 
-    std::fs::write(&path, source).expect("the fixture is writable");
+    // Written to a unique temporary name and renamed into place: the tests that
+    // share this fixture run in parallel, and a reader that finds a half-written
+    // file measures a document that is missing its tail.
+    static SEQ: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let unique = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let temp = dir.join(format!("large-{lines}.{}.{unique}.tmp", std::process::id()));
+    std::fs::write(&temp, source).expect("the fixture is writable");
+    std::fs::rename(&temp, &path).expect("the fixture is writable");
     path
 }
