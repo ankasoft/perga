@@ -894,15 +894,23 @@ Recorded honestly, per the environment caveat in Section 17.
   repository; it has to be uploaded under Settings → Social preview by hand.
   Noted in `demo/README.md`.
 
-### D87a: the release was not tagged
+### D87b: v0.1.0 and v0.1.1 are released
 
-Everything up to the tag is done: the pipeline is generated and checked, the
-packaging artefacts are written, `cargo publish --dry-run` passes, and
-`docs/publishing.md` carries the checklist. The tag itself was not created,
-because `v0.1.0` is a release marker and the release it would mark is not
-finished: the demo GIF does not exist yet, and the musl artefacts have never
-been built anywhere. Tagging is step 5 of the checklist for a reason, and
-steps 3 and 4 come first.
+Both tagged, built, and published. `v0.1.1` carries the closed-pipe fix and the
+installer path change; its artefacts were downloaded and checked here —
+checksums verify, the x86_64 binary is `static-pie linked`, it runs, and the
+one-line installer now lands the binary somewhere already on `PATH`.
+
+`packaging/PKGBUILD` carries `v0.1.1`'s real checksums. It has not been
+submitted to the AUR: that needs an AUR account and is the owner's to do.
+
+`cargo publish` has still not been run — see D87c.
+
+### D87c: crates.io publication is the owner's call
+
+`cargo publish --dry-run` passes on every push. The real thing was not run: it
+cannot be undone, it claims the `perga` name permanently, and nothing about
+finishing the milestones requires it. `docs/publishing.md` has it as step 8.
 
 ### D87: `cargo deny check` passes, and the allow list was narrowed to fit
 
