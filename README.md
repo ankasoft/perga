@@ -70,6 +70,9 @@ files. See [docs/publishing.md](docs/publishing.md) for what is in it.
 curl -sSfL https://github.com/ankasoft/perga/releases/latest/download/perga-installer.sh | sh
 ```
 
+Installs the binary to `~/.local/bin`. It does not install the man page or the
+shell completions — take those from the tarball above, or use a package.
+
 ### Arch Linux
 
 ```sh

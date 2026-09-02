@@ -812,6 +812,19 @@ Found by exercising the released tarball: `perga note.md | head` printed
 Print mode now treats `BrokenPipe` as the end of the job — no message, exit
 zero — which is what every other tool that writes to a pipe does.
 
+### D83c: the installer puts the binary in `~/.local/bin`
+
+`dist` defaults to `CARGO_HOME`. That is right for a tool whose users all have
+a Rust toolchain, and wrong here: perga ships a static binary and its audience
+is terminal users. `~/.local/bin` is on `PATH` out of the box on current
+distributions, where `~/.cargo/bin` is only on `PATH` for someone who has
+already installed Rust — and telling everyone else to `source ~/.cargo/env`
+before they can read a Markdown file is a poor first impression.
+
+`dist`'s installer has no way to install a man page or completions, so the
+one-liner is binary-only. That is what the tarball and the distribution
+packages are for, and `README.md` says so beside the command.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

@@ -13,8 +13,15 @@ installers = ["shell"]
 targets = ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
 # Checksums to generate for each App
 checksum = "sha256"
-# Path that installers should place binaries in
-install-path = "CARGO_HOME"
+# Path that installers should place binaries in.
+#
+# `~/.local/bin` rather than dist's default of `CARGO_HOME`: perga ships a
+# static binary and its audience is terminal users, not necessarily Rust
+# users. `~/.local/bin` is on PATH out of the box on current distributions;
+# `~/.cargo/bin` is only on PATH for someone who already installed a Rust
+# toolchain, and telling everyone else to `source ~/.cargo/env` for a
+# Markdown reader is a poor first impression.
+install-path = "~/.local/bin"
 # Whether to enable GitHub Attestations
 github-attestations = true
 
