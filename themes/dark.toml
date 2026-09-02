@@ -1,0 +1,66 @@
+name = "dark"
+# Which syntect theme to use for fenced code blocks; overrides theme.code_theme.
+code_theme = "base16-ocean.dark"
+
+[ui]
+background      = { bg = "#1e1e2e" }
+border          = { fg = "#45475a" }
+border_focused  = { fg = "#89b4fa" }
+title           = { fg = "#cdd6f4", bold = true }
+status_bar      = { fg = "#a6adc8", bg = "#181825" }
+status_mode     = { fg = "#1e1e2e", bg = "#89b4fa", bold = true }
+status_warning  = { fg = "#f9e2af" }
+status_error    = { fg = "#f38ba8" }
+selection       = { bg = "#313244" }
+scrollbar       = { fg = "#45475a" }
+logo            = { fg = "#89b4fa", bold = true }
+logo_subtitle   = { fg = "#6c7086" }
+
+[tabs]
+active   = { fg = "#cdd6f4", bg = "#313244", bold = true }
+inactive = { fg = "#6c7086" }
+dirty    = { fg = "#f9e2af" }
+
+[sidebar]
+directory     = { fg = "#89b4fa", bold = true }
+file          = { fg = "#cdd6f4" }
+file_active   = { fg = "#a6e3a1", bold = true }
+file_other    = { fg = "#6c7086", dim = true }
+mode_active   = { fg = "#1e1e2e", bg = "#89b4fa", bold = true }
+mode_inactive = { fg = "#6c7086" }
+match         = { fg = "#f9e2af", bold = true }
+line_number   = { fg = "#6c7086" }
+
+[markdown]
+h1 = { fg = "#f38ba8", bold = true }
+h2 = { fg = "#fab387", bold = true }
+h3 = { fg = "#f9e2af", bold = true }
+h4 = { fg = "#a6e3a1", bold = true }
+h5 = { fg = "#89b4fa", bold = true }
+h6 = { fg = "#cba6f7", bold = true }
+text              = { fg = "#cdd6f4" }
+emphasis          = { italic = true }
+strong            = { bold = true }
+strikethrough     = { crossed_out = true }
+blockquote        = { fg = "#a6adc8", italic = true }
+blockquote_bar    = { fg = "#585b70" }
+code_inline       = { fg = "#f5c2e7", bg = "#313244" }
+code_block_bg     = { bg = "#181825" }
+link              = { fg = "#89b4fa", underline = true }
+link_focused      = { fg = "#1e1e2e", bg = "#89b4fa" }
+link_broken       = { fg = "#f38ba8", crossed_out = true }
+link_external     = { fg = "#94e2d5", underline = true }
+wikilink          = { fg = "#cba6f7", underline = true }
+list_marker       = { fg = "#fab387" }
+task_done         = { fg = "#a6e3a1" }
+task_todo         = { fg = "#6c7086" }
+table_border      = { fg = "#45475a" }
+table_header      = { fg = "#cdd6f4", bold = true }
+rule              = { fg = "#45475a" }
+footnote          = { fg = "#94e2d5" }
+image_placeholder = { fg = "#94e2d5", italic = true }
+html              = { fg = "#6c7086", dim = true }
+frontmatter       = { fg = "#6c7086", dim = true }
+
+[hints]
+label = { fg = "#1e1e2e", bg = "#f9e2af", bold = true }
