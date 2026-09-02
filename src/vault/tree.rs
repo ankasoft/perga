@@ -448,6 +448,33 @@ impl Tree {
         true
     }
 
+    /// Forget an entry, and any children it had.
+    ///
+    /// Used when a file is renamed or deleted. The arena keeps the slot: node
+    /// indices are handed out to the renderer and the selection, and
+    /// compacting the arena would invalidate both.
+    pub fn remove(&mut self, path: &Path) {
+        let Some(index) = self.index.remove(path) else {
+            return;
+        };
+
+        if let Some(parent) = self.nodes[index].parent {
+            self.nodes[parent].children.retain(|&child| child != index);
+        }
+
+        let orphans: Vec<PathBuf> = self.nodes[index]
+            .children
+            .iter()
+            .map(|&child| self.nodes[child].path.clone())
+            .collect();
+        for orphan in orphans {
+            self.remove(&orphan);
+        }
+
+        self.nodes[index].parent = None;
+        self.keep_selection_visible();
+    }
+
     /// Show or hide dotted entries.
     pub fn toggle_hidden(&mut self) {
         self.include_hidden = !self.include_hidden;
@@ -463,7 +490,7 @@ impl Tree {
     /// Drop a selection that a toggle or a filter has just hidden.
     fn keep_selection_visible(&mut self) {
         let rows = self.rows();
-        if self.selected_row(&rows).is_none() {
+        if self.selected != ROOT && self.selected_row(&rows).is_none() {
             self.selected = rows.first().map_or(ROOT, |row| row.node);
         }
     }
@@ -626,6 +653,28 @@ mod tests {
             tree.selected().unwrap().path,
             PathBuf::from("docs/api/auth.md")
         );
+    }
+
+    #[test]
+    fn a_removed_entry_takes_its_children_with_it() {
+        let mut tree = tree();
+        tree.reveal(Path::new("docs/api/auth.md"));
+
+        tree.remove(Path::new("docs/api"));
+
+        assert_eq!(
+            visible(&tree),
+            [".github", "docs", "  setup.md", "README.md"]
+        );
+        assert!(!tree.select_path(Path::new("docs/api/auth.md")));
+    }
+
+    #[test]
+    fn removing_something_that_is_not_there_is_a_no_op() {
+        let mut tree = tree();
+        let before = tree.rows().len();
+        tree.remove(Path::new("nowhere.md"));
+        assert_eq!(tree.rows().len(), before);
     }
 
     #[test]
