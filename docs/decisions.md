@@ -298,3 +298,71 @@ visible screen costs and nothing more. A scrolled frame against a warm cache is
 
 These are not the Linux numbers. Section 14's targets are to be re-measured on
 the target platform; see D9.
+
+## M3 — Vault walking and the files sidebar
+
+### D26: the walk finds everything; the tree decides what to show
+
+`files.include_hidden` and `files.show_all` are applied when the visible rows
+are flattened, not when the vault is walked. Toggling either with `.` or `a` is
+then a re-flatten rather than a re-read of the filesystem, which is what makes
+both instant on a large vault.
+
+`files.respect_gitignore` is the exception: honouring `.gitignore` is a property
+of the walk itself, so changing it needs a new walk. Nothing in the UI offers
+to; it is set once, by configuration or by `--no-gitignore`.
+
+### D27: the walk is single-threaded
+
+`ignore` can walk in parallel. It is not used here. The tree sorts what it
+receives regardless of arrival order, and the streaming in batches already
+hides the walk behind the first frame, so parallelism would buy wall clock on
+exactly the vaults where it is least visible — at the cost of a second channel
+and a harder cancellation story. Revisit if a vault is ever measured where the
+tree is still filling in seconds after start-up.
+
+### D28: `require_git(false)`
+
+A notes vault is frequently not a git repository, and `ignore` will not apply a
+`.gitignore` outside one unless told to. `.gitignore` in a vault root means what
+it says whether or not the directory has ever been committed.
+
+### D29: batch size 256
+
+One message per entry puts 10,000 wake-ups through the event loop for a vault
+that size; one message for the whole walk leaves the tree empty until the walk
+ends. 256 is small enough that the tree visibly fills in and large enough that
+the channel is not the bottleneck.
+
+### D30: the tree filter is a line in the sidebar, not an overlay
+
+Section 8.3 lists the prompt overlay as serving new-file paths, rename, and the
+project search query — not the tree filter. The filter is drawn as a line at the
+top of the files mode, above the rows it is filtering, so what was typed and
+what it matched are visible together. It shares the [`TextInput`] implementation
+with the prompt overlay, and, like edit mode, it owns every key it can use while
+it is open: a `q` typed into a filter must not quit perga.
+
+### D31: a `[general]` and `[files]` table exist before the config loader does
+
+M10 owns configuration loading. The walker and the tree need `[files]` now, so
+the serde structures and their documented defaults were written with M3 and the
+five-layer precedence chain that fills them in is still M10's. `[general]` came
+with them for the one key M3 needs, `follow_symlinks`; `start_path`,
+`allow_local_config`, `wrap`, and `tab_width` are declared with their documented
+defaults but are not yet read by anything.
+
+### D32: the ignored fixture is force-added to git
+
+`tests/fixtures/vault/.gitignore` names `notes/`, and git applies a nested
+`.gitignore` to this repository as well as to anything reading the fixture. The
+one file the fixture needs there, `notes/ignored.md`, was therefore committed
+with `git add -f`. A file added under that directory later needs the same.
+
+### D33: the selection is a node, not a row
+
+Rows are recomputed from scratch every frame and change under the selection
+whenever a batch lands, a directory is expanded, or a filter is typed. Storing
+the selected *node* rather than its row index means a walk finishing does not
+move the user's cursor. When a toggle or a filter hides the selected node, the
+selection falls back to the first visible row rather than vanishing.

@@ -1,11 +1,11 @@
 ---
 source: tests/render.rs
-expression: "frame(&app, 120, 40)"
+expression: "frame(&mut app, 120, 40)"
 ---
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││                                                                                      │
-│                              ││                                                                                      │
+│0 entries, scanning…          ││                                                                                      │
 │           ┌ Keybindings ─────────────────────────────────────────────────────────────────────────────────┐           │
 │           │Global                                                                                        │           │
 │           │  q, Ctrl+Q                 Quit                                                              │           │

@@ -5,20 +5,20 @@ expression: "frame(&mut app, width, height)"
  perga broken-links.md                                                                                              1/4
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Broken links                                                                        │
-│                              ││                                                                                      │
-│                              ││a missing file and a [[Missing Page]].                                                │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││a missing file and a [[Missing Page]].                                                │
+│▸ docs                        ││                                                                                      │
+│▸ spaces and #hash            ││                                                                                      │
+│● broken-links.md             ││                                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││                                                                                      │
+│  gfm.md                      ││                                                                                      │
+│  invalid-utf8.md             ││                                                                                      │
+│  no-trailing-newline.md      ││                                                                                      │
+│  README.md                   ││                                                                                      │
+│  unicode.md                  ││                                                                                      │
+│  wide.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

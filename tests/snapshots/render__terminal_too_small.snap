@@ -1,6 +1,6 @@
 ---
 source: tests/render.rs
-expression: "frame(&app, 30, 8)"
+expression: "frame(&mut app, 30, 8)"
 ---
 
 

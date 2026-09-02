@@ -1,24 +1,24 @@
 ---
 source: tests/render.rs
-expression: "frame(&app, 120, 40)"
+expression: "frame(&mut app, 120, 40)"
 ---
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                       ██████  ███████ ██████   ██████   █████                        │
-│                              ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
-│                              ││                       ██████  █████   ██████  ██   ███ ███████                       │
-│                              ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
-│                              ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
-│                              ││                                                                                      │
-│                              ││                                      perga 0.1.0                                     │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││                                                                                      │
+│▸ docs                        ││                                                                                      │
+│▸ spaces and #hash            ││                                                                                      │
+│  broken-links.md             ││                                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││                       ██████  ███████ ██████   ██████   █████                        │
+│  gfm.md                      ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
+│  invalid-utf8.md             ││                       ██████  █████   ██████  ██   ███ ███████                       │
+│  no-trailing-newline.md      ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
+│  README.md                   ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
+│  unicode.md                  ││                                                                                      │
+│  wide.md                     ││                                      perga 0.1.0                                     │
 │                              ││                                                                                      │
 │                              ││                                Ctrl+O   find a document                              │
 │                              ││                                 Ctrl+B   toggle sidebar                              │

@@ -6,9 +6,9 @@ expression: "frame(&mut app, width, height)"
 ┌──────────────────┐───────────────────█
 │FILES search      │                   █
 │outline links     │                   █
-│                  │                   ║
-│                  │                   ║
-│                  │, şema, İstanbul,  ║
-│                  │                   ║
+│26 entries        │                   ║
+│  README.md       │                   ║
+│● unicode.md      │, şema, İstanbul,  ║
+│  wide.md         │                   ║
 └──────────────────┘───────────────────║
  READ

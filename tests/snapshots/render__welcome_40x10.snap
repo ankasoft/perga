@@ -1,12 +1,12 @@
 ---
 source: tests/render.rs
-expression: "frame(&app, width, height)"
+expression: "frame(&mut app, width, height)"
 ---
  perga
 ┌──────────────────┐───────────────────┐
 │FILES search      │ 0.1.0             │
 │outline links     │nd a document      │
-│                  │oggle sidebar      │
+│0 entries, scannin│oggle sidebar      │
 │                  │l keybindings      │
 │                  │                   │
 │                  │                   │

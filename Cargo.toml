@@ -58,6 +58,10 @@ insta = "1.48.0"
 name = "render"
 harness = false
 
+[[bench]]
+name = "vault"
+harness = false
+
 [profile.release]
 lto = "fat"
 codegen-units = 1

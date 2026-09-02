@@ -5,20 +5,20 @@ expression: "frame(&mut app, width, height)"
  perga gfm.md                                                              1/43
 ┌──────────────────────────────┐┌──────────────────────────────────────────────█
 │FILES search outline links    ││# GFM features                                █
-│                              ││                                              █
-│                              ││## A table with mixed alignment               █
-│                              ││                                              █
-│                              ││┌─────────────┬────────┬───────┐              █
-│                              │││ Left        │ Centre │ Right │              █
-│                              ││├─────────────┼────────┼───────┤              █
-│                              │││ a           │   b    │     c │              █
-│                              │││ longer cell │   x    │ 12345 │              █
-│                              ││└─────────────┴────────┴───────┘              █
-│                              ││                                              ║
-│                              ││## A task list                                ║
-│                              ││                                              ║
-│                              ││- ☑ a finished task                           ║
-│                              ││- ☐ an unfinished task                        ║
+│26 entries                    ││                                              █
+│▸ .github                     ││## A table with mixed alignment               █
+│▸ docs                        ││                                              █
+│▸ spaces and #hash            ││┌─────────────┬────────┬───────┐              █
+│  broken-links.md             │││ Left        │ Centre │ Right │              █
+│  crlf.md                     ││├─────────────┼────────┼───────┤              █
+│  empty.md                    │││ a           │   b    │     c │              █
+│  frontmatter-only.md         │││ longer cell │   x    │ 12345 │              █
+│● gfm.md                      ││└─────────────┴────────┴───────┘              █
+│  invalid-utf8.md             ││                                              ║
+│  no-trailing-newline.md      ││## A task list                                ║
+│  README.md                   ││                                              ║
+│  unicode.md                  ││- ☑ a finished task                           ║
+│  wide.md                     ││- ☐ an unfinished task                        ║
 │                              ││                                              ║
 │                              ││## Deeply nested lists                        ║
 │                              ││                                              ║

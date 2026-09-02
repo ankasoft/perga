@@ -31,7 +31,7 @@ fn sidebar_hidden() {
 
 #[test]
 fn sidebar_focused() {
-    let mut app = app(120, 40);
+    let mut app = common::vault_app(120, 40);
     app.update(Action::FocusNext);
     insta::assert_snapshot!(frame(&mut app, 120, 40));
 }
@@ -39,10 +39,27 @@ fn sidebar_focused() {
 #[test]
 fn each_sidebar_mode() {
     for mode in SidebarMode::ALL {
-        let mut app = app(120, 40);
+        let mut app = common::vault_app(120, 40);
         app.update(Action::SetSidebarMode(mode));
         insta::assert_snapshot!(format!("sidebar_mode_{mode}"), frame(&mut app, 120, 40));
     }
+}
+
+/// The tree with the filter line open, and with non-Markdown files shown.
+#[test]
+fn files_sidebar_states() {
+    let mut app = common::vault_app(120, 40);
+    app.update(Action::TreeFilter);
+    for c in "auth".chars() {
+        app.update(Action::TreeFilterEdit(
+            perga::ui::overlay::prompt::TextEdit::Insert(c),
+        ));
+    }
+    insta::assert_snapshot!("files_filtered", frame(&mut app, 120, 40));
+
+    let mut app = common::vault_app(120, 40);
+    app.update(Action::TreeToggleAllFiles);
+    insta::assert_snapshot!("files_all_files", frame(&mut app, 120, 40));
 }
 
 #[test]

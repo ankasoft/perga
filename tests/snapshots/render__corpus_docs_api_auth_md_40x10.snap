@@ -6,9 +6,9 @@ expression: "frame(&mut app, width, height)"
 ┌──────────────────┐───────────────────█
 │FILES search      │                   █
 │outline links     │                   █
-│                  │earer tokens. See  █
-│                  │walkthrough, and [[║
-│                  │r the rotation     ║
-│                  │                   ║
+│26 entries        │earer tokens. See  █
+│      ambiguous.md│walkthrough, and [[║
+│    ● auth.md     │r the rotation     ║
+│      errors.md   │                   ║
 └──────────────────┘───────────────────║
  READ

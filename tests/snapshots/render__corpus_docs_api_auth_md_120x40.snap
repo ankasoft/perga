@@ -5,26 +5,26 @@ expression: "frame(&mut app, width, height)"
  perga docs/api/auth.md                                                                                            1/12
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Authentication                                                                      │
-│                              ││                                                                                      │
-│                              ││This service uses Bearer tokens. See setup for the full walkthrough, and [[Token      │
-│                              ││Rotation]] for the rotation policy.                                                   │
-│                              ││                                                                                      │
-│                              ││## Obtaining a token                                                                  │
-│                              ││                                                                                      │
-│                              ││curl -X POST /auth/token \                                                            │
-│                              ││  -d '{"key":"..."}'                                                                  │
-│                              ││                                                                                      │
-│                              ││Back to the index.                                                                    │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││This service uses Bearer tokens. See setup for the full walkthrough, and [[Token      │
+│▾ docs                        ││Rotation]] for the rotation policy.                                                   │
+│  ▾ api                       ││                                                                                      │
+│      ambiguous.md            ││## Obtaining a token                                                                  │
+│    ● auth.md                 ││                                                                                      │
+│      errors.md               ││curl -X POST /auth/token \                                                            │
+│      webhooks.md             ││  -d '{"key":"..."}'                                                                  │
+│  ▸ guides                    ││                                                                                      │
+│▸ spaces and #hash            ││Back to the index.                                                                    │
+│  broken-links.md             ││                                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││                                                                                      │
+│  gfm.md                      ││                                                                                      │
+│  invalid-utf8.md             ││                                                                                      │
+│  no-trailing-newline.md      ││                                                                                      │
+│  README.md                   ││                                                                                      │
+│  unicode.md                  ││                                                                                      │
+│  wide.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

@@ -5,20 +5,20 @@ expression: "frame(&mut app, width, height)"
  perga README.md                                                                                                   1/22
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Fixture Vault                                                                       │
-│                              ││                                                                                      │
-│                              ││A corpus for perga's tests. Every Markdown feature perga renders appears somewhere    │
-│                              ││below or in one of the linked documents.                                              │
-│                              ││                                                                                      │
-│                              ││See the API docs and the setup guide.                                                 │
-│                              ││                                                                                      │
-│                              ││## Inline formatting                                                                  │
-│                              ││                                                                                      │
-│                              ││Text can be emphasised, strong, struck through, and inline code. An autolink:         │
-│                              ││https://example.com. A footnote reference[^note].                                     │
-│                              ││                                                                                      │
-│                              ││[note]: The footnote definition.                                                      │
-│                              ││                                                                                      │
-│                              ││## An image                                                                           │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││A corpus for perga's tests. Every Markdown feature perga renders appears somewhere    │
+│▸ docs                        ││below or in one of the linked documents.                                              │
+│▸ spaces and #hash            ││                                                                                      │
+│  broken-links.md             ││See the API docs and the setup guide.                                                 │
+│  crlf.md                     ││                                                                                      │
+│  empty.md                    ││## Inline formatting                                                                  │
+│  frontmatter-only.md         ││                                                                                      │
+│  gfm.md                      ││Text can be emphasised, strong, struck through, and inline code. An autolink:         │
+│  invalid-utf8.md             ││https://example.com. A footnote reference[^note].                                     │
+│  no-trailing-newline.md      ││                                                                                      │
+│● README.md                   ││[note]: The footnote definition.                                                      │
+│  unicode.md                  ││                                                                                      │
+│  wide.md                     ││## An image                                                                           │
 │                              ││                                                                                      │
 │                              ││[image: a diagram of the pipeline]                                                    │
 │                              ││                                                                                      │

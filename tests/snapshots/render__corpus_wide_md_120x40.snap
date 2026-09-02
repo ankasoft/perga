@@ -5,20 +5,20 @@ expression: "frame(&mut app, width, height)"
  perga wide.md                                                                                                     1/14
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Wide content                                                                        │
-│                              ││                                                                                      │
-│                              ││A fenced code block with a line far wider than any terminal:                          │
-│                              ││                                                                                      │
-│                              ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
-│                              ││                                                                                      │
-│                              ││A very wide table:                                                                    │
-│                              ││                                                                                      │
-│                              ││┌────────────┬────────────┬──────────────┬─────────────┬─────────────┬────────────┐   │
-│                              │││ column one │ column two │ column three │ column four │ column five │ column six │   │
-│                              ││├────────────┼────────────┼──────────────┼─────────────┼─────────────┼────────────┤   │
-│                              │││ value one  │ value two  │ value three  │ value four  │ value five  │ value six  │   │
-│                              ││└────────────┴────────────┴──────────────┴─────────────┴─────────────┴────────────┘   │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││A fenced code block with a line far wider than any terminal:                          │
+│▸ docs                        ││                                                                                      │
+│▸ spaces and #hash            ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
+│  broken-links.md             ││                                                                                      │
+│  crlf.md                     ││A very wide table:                                                                    │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││┌────────────┬────────────┬──────────────┬─────────────┬─────────────┬────────────┐   │
+│  gfm.md                      │││ column one │ column two │ column three │ column four │ column five │ column six │   │
+│  invalid-utf8.md             ││├────────────┼────────────┼──────────────┼─────────────┼─────────────┼────────────┤   │
+│  no-trailing-newline.md      │││ value one  │ value two  │ value three  │ value four  │ value five  │ value six  │   │
+│  README.md                   ││└────────────┴────────────┴──────────────┴─────────────┴─────────────┴────────────┘   │
+│  unicode.md                  ││                                                                                      │
+│● wide.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

@@ -1,6 +1,6 @@
 ---
 source: tests/render.rs
-expression: "frame(&app, width, height)"
+expression: "frame(&mut app, width, height)"
 ---
  perga
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐

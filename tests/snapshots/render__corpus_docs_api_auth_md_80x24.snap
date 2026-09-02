@@ -5,24 +5,24 @@ expression: "frame(&mut app, width, height)"
  perga docs/api/auth.md                                                    1/13
 ┌──────────────────────────────┐┌──────────────────────────────────────────────┐
 │FILES search outline links    ││# Authentication                              │
-│                              ││                                              │
-│                              ││This service uses Bearer tokens. See setup    │
-│                              ││for the full walkthrough, and [[Token Rotation│
-│                              ││]] for the rotation policy.                   │
-│                              ││                                              │
-│                              ││## Obtaining a token                          │
-│                              ││                                              │
-│                              ││curl -X POST /auth/token \                    │
-│                              ││  -d '{"key":"..."}'                          │
-│                              ││                                              │
-│                              ││Back to the index.                            │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
+│26 entries                    ││                                              │
+│▸ .github                     ││This service uses Bearer tokens. See setup    │
+│▾ docs                        ││for the full walkthrough, and [[Token Rotation│
+│  ▾ api                       ││]] for the rotation policy.                   │
+│      ambiguous.md            ││                                              │
+│    ● auth.md                 ││## Obtaining a token                          │
+│      errors.md               ││                                              │
+│      webhooks.md             ││curl -X POST /auth/token \                    │
+│  ▸ guides                    ││  -d '{"key":"..."}'                          │
+│▸ spaces and #hash            ││                                              │
+│  broken-links.md             ││Back to the index.                            │
+│  crlf.md                     ││                                              │
+│  empty.md                    ││                                              │
+│  frontmatter-only.md         ││                                              │
+│  gfm.md                      ││                                              │
+│  invalid-utf8.md             ││                                              │
+│  no-trailing-newline.md      ││                                              │
+│  README.md                   ││                                              │
+│  unicode.md                  ││                                              │
 └──────────────────────────────┘└──────────────────────────────────────────────┘
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

@@ -6,9 +6,9 @@ expression: "frame(&mut app, width, height)"
 ┌──────────────────┐───────────────────┐
 │FILES search      │                   │
 │outline links     │                   │
-│                  │a [[Missing Page]].│
-│                  │                   │
-│                  │                   │
-│                  │                   │
+│26 entries        │a [[Missing Page]].│
+│▸ spaces and #hash│                   │
+│● broken-links.md │                   │
+│  crlf.md         │                   │
 └──────────────────┘───────────────────┘
  READ

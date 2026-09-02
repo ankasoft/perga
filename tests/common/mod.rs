@@ -1,10 +1,14 @@
 //! Helpers shared by the integration tests.
+//!
+//! Each integration test binary compiles this module separately and uses a
+//! different part of it, so the unused ones are expected rather than dead.
+#![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
 
 use perga::app::App;
 use perga::config::keymap::Keymap;
-use perga::config::schema::UiConfig;
+use perga::config::schema::{FilesConfig, UiConfig};
 use perga::doc::document::Document;
 use perga::theme::Theme;
 use ratatui::backend::TestBackend;
@@ -15,15 +19,58 @@ pub const SIZES: [(u16, u16); 3] = [(120, 40), (80, 24), (40, 10)];
 
 /// An application with built-in defaults, sized for a terminal.
 pub fn app(width: u16, height: u16) -> App {
-    let mut app = App::new(Theme::dark(), Keymap::defaults(), UiConfig::default());
+    let mut app = App::new(
+        Theme::dark(),
+        Keymap::defaults(),
+        UiConfig::default(),
+        FilesConfig::default(),
+    );
     app.update(perga::action::Action::Resize(width, height));
     app
 }
 
-/// An application with a fixture document open.
+/// Walk a vault to completion and feed the result into the app.
+///
+/// The real walk is a background thread reporting into the event channel; this
+/// does the same work synchronously so a test can assert against a finished
+/// tree without sleeping on one.
+pub fn walk(app: &mut App) {
+    use perga::vault::walker::{self, WalkEvent, WalkOptions};
+
+    let root = app.vault.root.clone();
+    let actions = std::sync::Mutex::new(Vec::new());
+
+    walker::walk(
+        &root,
+        WalkOptions::default(),
+        &std::sync::atomic::AtomicBool::new(false),
+        &|event| {
+            actions.lock().unwrap().push(match event {
+                WalkEvent::Entries(entries) => perga::action::Action::VaultEntries(entries),
+                WalkEvent::Finished(total) => perga::action::Action::VaultWalkFinished(total),
+                WalkEvent::Failed(reason) => panic!("the walk failed: {reason}"),
+            });
+        },
+    );
+
+    for action in actions.into_inner().unwrap() {
+        app.update(action);
+    }
+}
+
+/// An application rooted on the fixture vault, with its tree fully walked.
+pub fn vault_app(width: u16, height: u16) -> App {
+    let mut app = app(width, height);
+    app.set_vault_root(vault());
+    walk(&mut app);
+    app
+}
+
+/// An application with the fixture vault walked and a document open.
 pub fn app_with(name: &str, width: u16, height: u16) -> App {
     let mut app = app(width, height);
     app.set_vault_root(vault());
+    walk(&mut app);
 
     let path = vault().join(name);
     let document = Document::load(&path)

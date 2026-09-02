@@ -1,26 +1,27 @@
 ---
 source: tests/render.rs
+assertion_line: 62
 expression: "frame(&mut app, 120, 40)"
 ---
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
-│files search outline LINKS    ││                                                                                      │
-│links                         ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                       ██████  ███████ ██████   ██████   █████                        │
-│                              ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
-│                              ││                       ██████  █████   ██████  ██   ███ ███████                       │
-│                              ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
-│                              ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
-│                              ││                                                                                      │
-│                              ││                                      perga 0.1.0                                     │
-│                              ││                                                                                      │
-│                              ││                                Ctrl+O   find a document                              │
+│FILES search outline links    ││                                                                                      │
+│26 entries                    ││                                                                                      │
+│▸ .github                     ││                                                                                      │
+│▸ docs                        ││                                                                                      │
+│▸ spaces and #hash            ││                                                                                      │
+│  .gitignore                  ││                                                                                      │
+│  broken-links.md             ││                                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  empty.md                    ││                       ██████  ███████ ██████   ██████   █████                        │
+│  frontmatter-only.md         ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
+│  gfm.md                      ││                       ██████  █████   ██████  ██   ███ ███████                       │
+│  invalid-utf8.md             ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
+│  loop                        ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
+│  no-trailing-newline.md      ││                                                                                      │
+│  README.md                   ││                                      perga 0.1.0                                     │
+│  unicode.md                  ││                                                                                      │
+│  wide.md                     ││                                Ctrl+O   find a document                              │
 │                              ││                                 Ctrl+B   toggle sidebar                              │
 │                              ││                                     ?   all keybindings                              │
 │                              ││                                                                                      │
@@ -41,4 +42,4 @@ expression: "frame(&mut app, 120, 40)"
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
+ READ  All files
