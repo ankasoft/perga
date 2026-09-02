@@ -185,6 +185,85 @@ impl Default for SearchConfig {
     }
 }
 
+/// Editing. The `[editor]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct EditorConfig {
+    /// The command `o` hands the file to. Empty means `$EDITOR`.
+    ///
+    /// This is the one key a vault-local `.perga.toml` may never set: it names
+    /// a program to run, and a local config arrives with any cloned repository.
+    /// See Section 10.
+    pub external_command: String,
+    /// How many columns a tab is.
+    pub tab_size: u8,
+    /// Insert spaces rather than a tab character.
+    pub insert_spaces: bool,
+    /// Soft-wrap in edit mode. Off by default: edit the real lines.
+    pub wrap: bool,
+    /// Save on leaving edit mode and on an interval.
+    pub autosave: bool,
+    /// How often autosave writes.
+    pub autosave_interval_secs: u64,
+    /// Show whitespace characters.
+    pub show_whitespace: bool,
+    /// Seed a new file with a frontmatter title.
+    pub new_file_frontmatter: bool,
+}
+
+impl Default for EditorConfig {
+    fn default() -> Self {
+        EditorConfig {
+            external_command: String::new(),
+            tab_size: 4,
+            insert_spaces: true,
+            wrap: false,
+            autosave: false,
+            autosave_interval_secs: 30,
+            show_whitespace: false,
+            new_file_frontmatter: false,
+        }
+    }
+}
+
+/// Filesystem watching. The `[watch]` table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct WatchConfig {
+    /// Watch the vault for changes at all.
+    pub enabled: bool,
+    /// How long a burst of events is coalesced for.
+    pub debounce_ms: u64,
+}
+
+impl Default for WatchConfig {
+    fn default() -> Self {
+        WatchConfig {
+            enabled: true,
+            debounce_ms: 200,
+        }
+    }
+}
+
+/// Session persistence. The `[session]` table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SessionConfig {
+    /// Restore the previous session when perga is opened with no path.
+    pub restore: bool,
+    /// How many documents the recent list remembers.
+    pub max_recent: usize,
+}
+
+impl Default for SessionConfig {
+    fn default() -> Self {
+        SessionConfig {
+            restore: true,
+            max_recent: 50,
+        }
+    }
+}
+
 /// Vault-wide behaviour. The `[general]` table.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
