@@ -141,6 +141,9 @@ impl Frontmatter {
 /// A loaded document.
 #[derive(Debug, Clone)]
 pub struct Document {
+    /// Hash of the source, so a layout can tell it is looking at a different
+    /// document without comparing the text.
+    pub content_hash: u64,
     /// Where the document came from.
     pub path: PathBuf,
     /// The source text, with any BOM stripped.
@@ -210,6 +213,7 @@ impl Document {
         let (blocks, outline) = parse_blocks(&source, body_start);
 
         Document {
+            content_hash: hash_of(&source),
             path,
             source,
             mtime,
@@ -262,6 +266,15 @@ impl Document {
             .display()
             .to_string()
     }
+}
+
+/// Hash a document's source text.
+fn hash_of(source: &str) -> u64 {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    source.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// The parser options perga parses with.
