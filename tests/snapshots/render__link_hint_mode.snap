@@ -1,34 +1,34 @@
 ---
 source: tests/render.rs
-expression: "frame(&mut app, width, height)"
+expression: "frame(&mut app, 120, 40)"
 ---
- perga docs/api/auth.md                                                                                            1/12
+ perga README.md                                                                                                   1/22
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
-│FILES search outline links    ││# Authentication                                                                      │
+│FILES search outline links    ││# Fixture Vault                                                                       │
 │30 entries                    ││                                                                                      │
-│▸ .github                     ││This service uses Bearer tokens. See setup for the full walkthrough, and [[Token      │
-│▾ docs                        ││Rotation]] for the rotation policy.                                                   │
-│  ▾ api                       ││                                                                                      │
-│      ambiguous.md            ││## Obtaining a token                                                                  │
-│    ● auth.md                 ││                                                                                      │
-│      errors.md               ││curl -X POST /auth/token \                                                            │
-│      webhooks.md             ││  -d '{"key":"..."}'                                                                  │
-│  ▸ guides                    ││                                                                                      │
-│▸ spaces and #hash            ││Back to the index.                                                                    │
-│  anchors.md                  ││                                                                                      │
+│▸ .github                     ││A corpus for perga's tests. Every Markdown feature perga renders appears somewhere    │
+│▸ docs                        ││below or in one of the linked documents.                                              │
+│▸ spaces and #hash            ││                                                                                      │
+│  anchors.md                  ││See ahe API docs and she setup guide.                                                 │
 │  broken-links.md             ││                                                                                      │
-│  crlf.md                     ││                                                                                      │
+│  crlf.md                     ││## Inline formatting                                                                  │
 │  cycle-a.md                  ││                                                                                      │
-│  cycle-b.md                  ││                                                                                      │
-│  empty.md                    ││                                                                                      │
+│  cycle-b.md                  ││Text can be emphasised, strong, struck through, and inline code. An autolink:         │
+│  empty.md                    ││dttps://example.com. A footnote reference[^note].                                     │
 │  frontmatter-only.md         ││                                                                                      │
-│  gfm.md                      ││                                                                                      │
+│  gfm.md                      ││[note]: The footnote definition.                                                      │
 │  invalid-utf8.md             ││                                                                                      │
-│  no-trailing-newline.md      ││                                                                                      │
+│  no-trailing-newline.md      ││## An image                                                                           │
 │  outside.md                  ││                                                                                      │
-│  README.md                   ││                                                                                      │
+│● README.md                   ││[image: a diagram of the pipeline]                                                    │
 │  unicode.md                  ││                                                                                      │
-│  wide.md                     ││                                                                                      │
+│  wide.md                     ││## Raw HTML                                                                           │
+│                              ││                                                                                      │
+│                              ││<div class="callout">Raw HTML renders as literal text.</div>                          │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

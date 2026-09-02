@@ -1,12 +1,11 @@
 ---
 source: tests/render.rs
-assertion_line: 58
 expression: "frame(&mut app, 120, 40)"
 ---
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││                                                                                      │
-│26 entries                    ││                                                                                      │
+│30 entries                    ││                                                                                      │
 │/auth                         ││                                                                                      │
 │▾ docs                        ││                                                                                      │
 │  ▾ api                       ││                                                                                      │

@@ -5,24 +5,24 @@ expression: "frame(&mut app, width, height)"
  perga gfm.md                                                                                                      1/43
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────█
 │FILES search outline links    ││# GFM features                                                                        █
-│26 entries                    ││                                                                                      █
+│30 entries                    ││                                                                                      █
 │▸ .github                     ││## A table with mixed alignment                                                       █
 │▸ docs                        ││                                                                                      █
 │▸ spaces and #hash            ││┌─────────────┬────────┬───────┐                                                      █
-│  broken-links.md             │││ Left        │ Centre │ Right │                                                      █
-│  crlf.md                     ││├─────────────┼────────┼───────┤                                                      █
-│  empty.md                    │││ a           │   b    │     c │                                                      █
-│  frontmatter-only.md         │││ longer cell │   x    │ 12345 │                                                      █
-│● gfm.md                      ││└─────────────┴────────┴───────┘                                                      █
-│  invalid-utf8.md             ││                                                                                      █
-│  no-trailing-newline.md      ││## A task list                                                                        █
-│  README.md                   ││                                                                                      █
-│  unicode.md                  ││- ☑ a finished task                                                                   █
-│  wide.md                     ││- ☐ an unfinished task                                                                █
-│                              ││                                                                                      █
-│                              ││## Deeply nested lists                                                                █
-│                              ││                                                                                      █
-│                              ││- one                                                                                 █
+│  anchors.md                  │││ Left        │ Centre │ Right │                                                      █
+│  broken-links.md             ││├─────────────┼────────┼───────┤                                                      █
+│  crlf.md                     │││ a           │   b    │     c │                                                      █
+│  cycle-a.md                  │││ longer cell │   x    │ 12345 │                                                      █
+│  cycle-b.md                  ││└─────────────┴────────┴───────┘                                                      █
+│  empty.md                    ││                                                                                      █
+│  frontmatter-only.md         ││## A task list                                                                        █
+│● gfm.md                      ││                                                                                      █
+│  invalid-utf8.md             ││- ☑ a finished task                                                                   █
+│  no-trailing-newline.md      ││- ☐ an unfinished task                                                                █
+│  outside.md                  ││                                                                                      █
+│  README.md                   ││## Deeply nested lists                                                                █
+│  unicode.md                  ││                                                                                      █
+│  wide.md                     ││- one                                                                                 █
 │                              ││    - two                                                                             █
 │                              ││        - three                                                                       █
 │                              ││            - four                                                                    █

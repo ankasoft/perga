@@ -366,3 +366,59 @@ whenever a batch lands, a directory is expanded, or a filter is typed. Storing
 the selected *node* rather than its row index means a walk finishing does not
 move the user's cursor. When a toggle or a filter hides the selected node, the
 selection falls back to the first visible row rather than vanishing.
+
+## M4 — Link navigation and history
+
+### D34: a leading `/` is tried against the vault root first
+
+`[text](/docs/api.md)` is ambiguous: a vault written for a static site
+generator means "from the vault root", and a document written against a
+filesystem means the filesystem root. The vault root is tried first because
+that is overwhelmingly what the target means inside a vault, and the filesystem
+root is the fallback rather than the other way round. A target that exists in
+neither place is broken, and nothing is created.
+
+### D35: link positions are found in the rendered text, not derived from bytes
+
+A link's rendered column cannot be computed from its byte offset: wrapping,
+list markers, blockquote bars, and table borders all move text sideways, and
+`tui-markdown` owns that layout. The offset↔line map gives the *line*, and the
+column is found by searching that line's rendered text for the link's own
+label. Several links with the same text on one line are handled by consuming
+each match as it is used.
+
+### D36: paths are normalised lexically, never canonicalised
+
+`canonicalize` resolves symlinks and fails on a path that does not exist. A
+broken link must resolve to `Broken`, not to an I/O error, and a vault whose
+notes directory is a symlink must not have its links silently rewritten to
+point somewhere the author never named. `..` is therefore collapsed lexically.
+
+### D37: opening a document keeps the tab's history
+
+`App::open` replaces the document, the layout, the scroll offsets, and the link
+focus — everything about the *view*. The history and the read-or-edit mode
+belong to the tab, not to the document in it, and survive. This is what makes
+`Alt+←` work after following a link, and it is the reason `open` does not
+simply assign a fresh `Tab`.
+
+### D38: history is pushed by any navigation that replaces the document
+
+Section 9.5 says following a link pushes the current location. Opening a
+document from the tree does the same, because a reader who opened A and then B
+expects Back to return to A, exactly as a browser does. `App::open` itself does
+not push: it is the primitive both paths use, and the initial document has
+nowhere to go back to.
+
+### D39: hint labels are drawn over the document, not in a panel
+
+A label only means anything on top of the link it belongs to. Hint mode is an
+overlay in the focus sense — it owns input until it closes — but it is painted
+into the viewport's own area. The focused-link highlight is suppressed while it
+is open: two cues competing for the same links is worse than one.
+
+### D40: a hint keystroke that matches nothing is dropped, not fatal
+
+Typing a key with no matching label is a typo. It is discarded and hint mode
+stays open, rather than cancelling the mode and leaving the reader to press `f`
+again.

@@ -5,24 +5,24 @@ expression: "frame(&mut app, width, height)"
  perga README.md                                                           1/26
 ┌──────────────────────────────┐┌──────────────────────────────────────────────█
 │FILES search outline links    ││# Fixture Vault                               █
-│26 entries                    ││                                              █
+│30 entries                    ││                                              █
 │▸ .github                     ││A corpus for perga's tests. Every Markdown    █
 │▸ docs                        ││feature perga renders appears somewhere below █
 │▸ spaces and #hash            ││or in one of the linked documents.            █
-│  broken-links.md             ││                                              █
-│  crlf.md                     ││See the API docs and the setup guide.         █
-│  empty.md                    ││                                              █
-│  frontmatter-only.md         ││## Inline formatting                          █
-│  gfm.md                      ││                                              █
-│  invalid-utf8.md             ││Text can be emphasised, strong, struck through█
-│  no-trailing-newline.md      ││, and inline code. An autolink:               █
-│● README.md                   ││https://example.com. A footnote reference[^   █
-│  unicode.md                  ││note].                                        █
-│  wide.md                     ││                                              █
-│                              ││[note]: The footnote definition.              █
-│                              ││                                              █
-│                              ││## An image                                   ║
-│                              ││                                              ║
+│  anchors.md                  ││                                              █
+│  broken-links.md             ││See the API docs and the setup guide.         █
+│  crlf.md                     ││                                              █
+│  cycle-a.md                  ││## Inline formatting                          █
+│  cycle-b.md                  ││                                              █
+│  empty.md                    ││Text can be emphasised, strong, struck through█
+│  frontmatter-only.md         ││, and inline code. An autolink:               █
+│  gfm.md                      ││https://example.com. A footnote reference[^   █
+│  invalid-utf8.md             ││note].                                        █
+│  no-trailing-newline.md      ││                                              █
+│  outside.md                  ││[note]: The footnote definition.              █
+│● README.md                   ││                                              █
+│  unicode.md                  ││## An image                                   ║
+│  wide.md                     ││                                              ║
 │                              ││[image: a diagram of the pipeline]            ║
 └──────────────────────────────┘└──────────────────────────────────────────────║
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

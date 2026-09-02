@@ -5,24 +5,24 @@ expression: "frame(&mut app, width, height)"
  perga wide.md                                                             1/15
 ┌──────────────────────────────┐┌──────────────────────────────────────────────┐
 │FILES search outline links    ││# Wide content                                │
-│26 entries                    ││                                              │
+│30 entries                    ││                                              │
 │▸ .github                     ││A fenced code block with a line far wider     │
 │▸ docs                        ││than any terminal:                            │
 │▸ spaces and #hash            ││                                              │
-│  broken-links.md             ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
-│  crlf.md                     ││                                              │
-│  empty.md                    ││A very wide table:                            │
-│  frontmatter-only.md         ││                                              │
-│  gfm.md                      ││┌────────────┬────────────┬──────────────┬───…│
-│  invalid-utf8.md             │││ column one │ column two │ column three │ co…│
-│  no-trailing-newline.md      ││├────────────┼────────────┼──────────────┼───…│
-│  README.md                   │││ value one  │ value two  │ value three  │ va…│
-│  unicode.md                  ││└────────────┴────────────┴──────────────┴───…│
+│  anchors.md                  ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
+│  broken-links.md             ││                                              │
+│  crlf.md                     ││A very wide table:                            │
+│  cycle-a.md                  ││                                              │
+│  cycle-b.md                  ││┌────────────┬────────────┬──────────────┬───…│
+│  empty.md                    │││ column one │ column two │ column three │ co…│
+│  frontmatter-only.md         ││├────────────┼────────────┼──────────────┼───…│
+│  gfm.md                      │││ value one  │ value two  │ value three  │ va…│
+│  invalid-utf8.md             ││└────────────┴────────────┴──────────────┴───…│
+│  no-trailing-newline.md      ││                                              │
+│  outside.md                  ││                                              │
+│  README.md                   ││                                              │
+│  unicode.md                  ││                                              │
 │● wide.md                     ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
-│                              ││                                              │
 │                              ││                                              │
 └──────────────────────────────┘└──────────────────────────────────────────────┘
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

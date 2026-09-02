@@ -1,31 +1,30 @@
 ---
 source: tests/render.rs
-assertion_line: 62
 expression: "frame(&mut app, 120, 40)"
 ---
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││                                                                                      │
-│26 entries                    ││                                                                                      │
+│30 entries                    ││                                                                                      │
 │▸ .github                     ││                                                                                      │
 │▸ docs                        ││                                                                                      │
 │▸ spaces and #hash            ││                                                                                      │
 │  .gitignore                  ││                                                                                      │
+│  anchors.md                  ││                                                                                      │
 │  broken-links.md             ││                                                                                      │
-│  crlf.md                     ││                                                                                      │
-│  empty.md                    ││                       ██████  ███████ ██████   ██████   █████                        │
-│  frontmatter-only.md         ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
-│  gfm.md                      ││                       ██████  █████   ██████  ██   ███ ███████                       │
-│  invalid-utf8.md             ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
-│  loop                        ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
-│  no-trailing-newline.md      ││                                                                                      │
-│  README.md                   ││                                      perga 0.1.0                                     │
+│  crlf.md                     ││                       ██████  ███████ ██████   ██████   █████                        │
+│  cycle-a.md                  ││                       ██   ██ ██      ██   ██ ██       ██   ██                       │
+│  cycle-b.md                  ││                       ██████  █████   ██████  ██   ███ ███████                       │
+│  empty.md                    ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
+│  frontmatter-only.md         ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
+│  gfm.md                      ││                                                                                      │
+│  invalid-utf8.md             ││                                      perga 0.1.0                                     │
+│  loop                        ││                                                                                      │
+│  no-trailing-newline.md      ││                                Ctrl+O   find a document                              │
+│  outside.md                  ││                                 Ctrl+B   toggle sidebar                              │
+│  README.md                   ││                                     ?   all keybindings                              │
 │  unicode.md                  ││                                                                                      │
-│  wide.md                     ││                                Ctrl+O   find a document                              │
-│                              ││                                 Ctrl+B   toggle sidebar                              │
-│                              ││                                     ?   all keybindings                              │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
+│  wide.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

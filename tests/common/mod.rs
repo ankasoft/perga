@@ -80,6 +80,19 @@ pub fn app_with(name: &str, width: u16, height: u16) -> App {
     app
 }
 
+/// Render one frame and hand back the buffer, for the assertions that are
+/// about style rather than text.
+pub fn frame_buffer(app: &mut App, width: u16, height: u16) -> ratatui::buffer::Buffer {
+    let mut terminal =
+        Terminal::new(TestBackend::new(width, height)).expect("the test backend never fails");
+
+    terminal
+        .draw(|f| perga::ui::draw(app, f))
+        .expect("rendering never fails");
+
+    terminal.backend().buffer().clone()
+}
+
 /// Render one frame and return it as text.
 ///
 /// Text rather than a styled dump: a snapshot is only useful if a human can see

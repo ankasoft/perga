@@ -5,24 +5,24 @@ expression: "frame(&mut app, width, height)"
  perga unicode.md                                                                                                  1/14
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Unicode                                                                             │
-│26 entries                    ││                                                                                      │
+│30 entries                    ││                                                                                      │
 │▸ .github                     ││## Kurulum Kılavuzu                                                                   │
 │▸ docs                        ││                                                                                      │
 │▸ spaces and #hash            ││Türkçe metin: ölçüm, şema, İstanbul, ığdır.                                           │
-│  broken-links.md             ││                                                                                      │
-│  crlf.md                     ││## 日 本 語 の 見 出 し                                                                      │
-│  empty.md                    ││                                                                                      │
-│  frontmatter-only.md         ││日 本 語 の テ キ ス ト は 一 文 字 あ た り 二 列 を 占 め ま す 。 こ れ は 折 り 返 し の 計 算 に 影 響 し ま す 。       │
-│  gfm.md                      ││                                                                                      │
-│  invalid-utf8.md             ││## Emoji 🎉                                                                            │
+│  anchors.md                  ││                                                                                      │
+│  broken-links.md             ││## 日 本 語 の 見 出 し                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  cycle-a.md                  ││日 本 語 の テ キ ス ト は 一 文 字 あ た り 二 列 を 占 め ま す 。 こ れ は 折 り 返 し の 計 算 に 影 響 し ま す 。       │
+│  cycle-b.md                  ││                                                                                      │
+│  empty.md                    ││## Emoji 🎉                                                                            │
+│  frontmatter-only.md         ││                                                                                      │
+│  gfm.md                      ││A line with emoji: 🎉  🚀  ✅  — and text after them.                                    │
+│  invalid-utf8.md             ││                                                                                      │
 │  no-trailing-newline.md      ││                                                                                      │
-│  README.md                   ││A line with emoji: 🎉  🚀  ✅  — and text after them.                                    │
+│  outside.md                  ││                                                                                      │
+│  README.md                   ││                                                                                      │
 │● unicode.md                  ││                                                                                      │
 │  wide.md                     ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
-│                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

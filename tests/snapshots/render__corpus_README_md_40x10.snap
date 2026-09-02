@@ -6,8 +6,8 @@ expression: "frame(&mut app, width, height)"
 ┌──────────────────┐───────────────────█
 │FILES search      │                   █
 │outline links     │                   ║
-│26 entries        │s tests. Every     ║
-│  no-trailing-newl│rga renders appears║
+│30 entries        │s tests. Every     ║
+│  outside.md      │rga renders appears║
 │● README.md       │ in one of the     ║
 │  unicode.md      │                   ║
 └──────────────────┘───────────────────║

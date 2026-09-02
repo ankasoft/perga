@@ -62,6 +62,15 @@ fn files_sidebar_states() {
     insta::assert_snapshot!("files_all_files", frame(&mut app, 120, 40));
 }
 
+/// Hint mode, with a label over every link in view.
+#[test]
+fn link_hint_mode() {
+    let mut app = common::app_with("README.md", 120, 40);
+    frame(&mut app, 120, 40);
+    app.update(Action::HintMode);
+    insta::assert_snapshot!(frame(&mut app, 120, 40));
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);
