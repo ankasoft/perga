@@ -47,6 +47,104 @@ impl Default for UiConfig {
     }
 }
 
+/// How the files sidebar orders the entries in a directory.
+///
+/// Directories always come before files whatever this says; the key only
+/// orders entries of the same kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortKey {
+    /// Alphabetically, case-insensitively.
+    #[default]
+    Name,
+    /// Most recently modified first.
+    Mtime,
+    /// Largest first.
+    Size,
+}
+
+/// The vault tree. The `[files]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FilesConfig {
+    /// Include dotted directories such as `.github` and `.claude`.
+    ///
+    /// On by default, deliberately: a dotted directory in a notes vault holds
+    /// notes, and hiding it by default with no visible override is the
+    /// behaviour this project exists to avoid.
+    pub include_hidden: bool,
+    /// Honour `.gitignore`, `.ignore`, and the global gitignore.
+    pub respect_gitignore: bool,
+    /// Show files that are not Markdown.
+    pub show_all: bool,
+    /// How entries within a directory are ordered.
+    pub sort: SortKey,
+    /// Reverse whatever order `sort` produces.
+    pub sort_reverse: bool,
+    /// Extensions treated as Markdown, without the leading dot.
+    pub extensions: Vec<String>,
+}
+
+impl Default for FilesConfig {
+    fn default() -> Self {
+        FilesConfig {
+            include_hidden: true,
+            respect_gitignore: true,
+            show_all: false,
+            sort: SortKey::Name,
+            sort_reverse: false,
+            extensions: ["md", "markdown", "mdx"]
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+        }
+    }
+}
+
+impl FilesConfig {
+    /// Whether a path's extension marks it as Markdown.
+    pub fn is_markdown(&self, path: &std::path::Path) -> bool {
+        let Some(extension) = path.extension().and_then(|e| e.to_str()) else {
+            return false;
+        };
+        self.extensions
+            .iter()
+            .any(|known| known.eq_ignore_ascii_case(extension))
+    }
+}
+
+/// Vault-wide behaviour. The `[general]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GeneralConfig {
+    /// Directory opened when no `PATH` argument is given.
+    pub start_path: std::path::PathBuf,
+    /// Read `.perga.toml` from the vault root.
+    pub allow_local_config: bool,
+    /// Follow symlinks while walking the vault.
+    ///
+    /// Off by default: a vault with a symlink loop in it is not exotic, and a
+    /// walker that follows links has to carry a device/inode set to survive
+    /// one.
+    pub follow_symlinks: bool,
+    /// Hard wrap width; 0 fits the viewport.
+    pub wrap: u16,
+    /// Expand tabs in source to this many spaces when rendering.
+    pub tab_width: u8,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        GeneralConfig {
+            start_path: std::path::PathBuf::from("."),
+            allow_local_config: true,
+            follow_symlinks: false,
+            wrap: 0,
+            tab_width: 4,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
