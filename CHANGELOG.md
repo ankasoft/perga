@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-09-02
+
 ### Fixed
 
 - `perga note.md | head`, and quitting `less -R` early, no longer print
   `writing to stdout: Broken pipe` and exit 1. A closed pipe is the end of the
   job, not a failure.
+
+### Changed
+
+- The installer script puts the binary in `~/.local/bin` rather than
+  `~/.cargo/bin`. perga ships a static binary and its audience is terminal
+  users, not necessarily Rust users; `~/.local/bin` is on `PATH` out of the box
+  on current distributions.
 
 ## [0.1.0] — 2026-09-02
 
@@ -110,5 +119,6 @@ The first release.
 - Deletion is deliberately not offered. Every other file operation can be
   undone; that one cannot.
 
-[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ankasoft/perga/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ankasoft/perga/releases/tag/v0.1.0

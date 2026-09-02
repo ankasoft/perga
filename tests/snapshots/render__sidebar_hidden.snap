@@ -18,7 +18,7 @@ expression: "frame(&mut app, 120, 40)"
 │                                       ██      ██      ██   ██ ██    ██ ██   ██                                       │
 │                                       ██      ███████ ██   ██  ██████  ██   ██                                       │
 │                                                                                                                      │
-│                                                      perga 0.1.0                                                     │
+│                                                      perga #####                                                     │
 │                                                                                                                      │
 │                                                Ctrl+O   find a document                                              │
 │                                                 Ctrl+B   toggle sidebar                                              │

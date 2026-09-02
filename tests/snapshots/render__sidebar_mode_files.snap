@@ -18,7 +18,7 @@ expression: "frame(&mut app, 120, 40)"
 │  frontmatter-only.md         ││                       ██      ██      ██   ██ ██    ██ ██   ██                       │
 │  gfm.md                      ││                       ██      ███████ ██   ██  ██████  ██   ██                       │
 │  invalid-utf8.md             ││                                                                                      │
-│  no-trailing-newline.md      ││                                      perga 0.1.0                                     │
+│  no-trailing-newline.md      ││                                      perga #####                                     │
 │  outside.md                  ││                                                                                      │
 │  README.md                   ││                                Ctrl+O   find a document                              │
 │  unicode.md                  ││                                 Ctrl+B   toggle sidebar                              │

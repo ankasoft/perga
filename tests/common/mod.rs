@@ -93,6 +93,20 @@ pub fn frame_buffer(app: &mut App, width: u16, height: u16) -> ratatui::buffer::
     terminal.backend().buffer().clone()
 }
 
+/// Hide the crate version in a rendered frame.
+///
+/// The welcome screen shows `perga <version>`, so without this every release
+/// invalidates seven snapshots — and a snapshot that churns on every release
+/// is one people learn to accept without reading, which is the whole value of
+/// having it gone.
+///
+/// Replaced character for character, so the grid stays aligned and a version
+/// that changes *length* still shows up as a layout change, which it is.
+fn hide_version(text: &str) -> String {
+    let version = env!("CARGO_PKG_VERSION");
+    text.replace(version, &"#".repeat(version.chars().count()))
+}
+
 /// Render one frame and return it as text.
 ///
 /// Text rather than a styled dump: a snapshot is only useful if a human can see
@@ -122,7 +136,7 @@ pub fn frame(app: &mut App, width: u16, height: u16) -> String {
         out.push('\n');
     }
 
-    out
+    hide_version(&out)
 }
 
 /// The committed fixture vault.

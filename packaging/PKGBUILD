@@ -3,7 +3,7 @@
 
 pkgname=perga-bin
 _pkgname=perga
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="A terminal Markdown browser with a persistent file tree, tabs, wiki-links and backlinks"
 arch=('x86_64' 'aarch64')
