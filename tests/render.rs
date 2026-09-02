@@ -162,6 +162,21 @@ fn edit_mode_and_confirm() {
     insta::assert_snapshot!("confirm_overlay", frame(&mut app, 120, 40));
 }
 
+/// The same frame under each of the three built-in themes.
+///
+/// Text rather than style, like every other snapshot here, so the diff is
+/// readable; the styles themselves are asserted in `src/theme`. What this
+/// catches is a theme that changes the *layout* — a wider marker, a longer
+/// label — rather than only the colours.
+#[test]
+fn every_builtin_theme_renders() {
+    for name in ["dark", "light", "high-contrast"] {
+        let mut app = common::app_with("gfm.md", 120, 40);
+        app.theme = perga::theme::Theme::builtin(name).expect("a built-in theme");
+        insta::assert_snapshot!(format!("theme_{name}"), frame(&mut app, 120, 40));
+    }
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);

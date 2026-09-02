@@ -671,3 +671,80 @@ configuration and the environment, refusing when there is none, refusing while
 the buffer is dirty — is. **Verified by hand** on this machine with
 `EDITOR=vim`: the editor takes the screen, exits cleanly, and perga repaints
 with the file reloaded. A reviewer on another platform should repeat it.
+
+## M10 — Configuration, theming, session
+
+### D73: layers are merged as TOML, and typed once at the end
+
+Each layer is parsed into a `toml::Table` and merged key by key before anything
+is deserialised. Typing each layer separately and then merging the typed values
+would need every field to become an `Option` — the layer that did not mention a
+key must not overwrite the one that did — and would double the schema.
+
+### D74: an invalid value is isolated by retrying key by key
+
+A table that will not deserialise is rebuilt one key at a time: each key is
+tried on its own, the ones that work are kept, and the ones that do not produce
+a warning naming them. That is what makes `sidebar_width = "wide"` cost one
+setting rather than the whole `[ui]` table. It is quadratic in the number of
+keys, which is fine at a dozen and only happens when something is already wrong.
+
+`deny_unknown_fields` is kept on the schema structs, so the same loop catches
+an unknown key and an invalid value and reports both with serde's own message.
+
+### D75: a remap replaces an action's defaults rather than adding to them
+
+`"quit" = "ctrl+q"` means `q` should stop quitting. A remap that only ever added
+bindings would leave a user unable to free a key, which is most of what
+remapping is for.
+
+### D76: `[keys]` action names are derived, not listed
+
+The name is the snake-cased variant — `toggle_sidebar`, `scroll_top` — computed
+from the action rather than written in a second table beside it, so a new action
+cannot be added without a name and the two cannot drift. `SetSidebarMode` is the
+one action carrying a payload, and it is spelled `sidebar_mode_<mode>`.
+
+### D77: the terminal background is detected from `COLORFGBG` only
+
+Section 11.3 also asks for an OSC 11 query with a 50 ms timeout. It is **not
+implemented**, and the reason is structural rather than an omission: reading the
+reply means reading stdin, and stdin belongs to the input thread that Section
+7.1 requires for the 0% idle CPU target. Querying before that thread starts
+would delay the first frame, which 11.3 forbids; querying after it means racing
+the thread for the reply and hoping `crossterm` does not swallow the escape
+sequence as a key press.
+
+So `theme.name = "auto"` reads `COLORFGBG`, which rxvt, Konsole, and several
+others set, and uses `dark` otherwise — which is what 11.3 asks for when
+detection fails. A user on a light terminal that sets no `COLORFGBG` writes
+`theme.name = "light"` once. Revisit if `crossterm` grows a first-class
+terminal-query API.
+
+### D78: degrade before stripping
+
+`NO_COLOR` wins over everything, and degrading a theme that has already had its
+colours removed would have nothing to do. So the order is: resolve, degrade to
+ANSI-256 when `COLORTERM` does not claim truecolour, then strip if `NO_COLOR` is
+set.
+
+### D79: `high-contrast` sets every colour its base sets
+
+A theme file inherits what it does not mention, and `dark` is the base. A key
+left out of `high-contrast` would quietly pull a truecolour value in from
+`dark`, which defeats the whole point of the theme. The test in
+`src/theme/builtin.rs` walks every resolved style and fails on anything outside
+the sixteen ANSI colours — that is what caught `selection` and `code_inline`.
+
+### D80: the shipped default config is a file, not a string literal
+
+`docs/default-config.toml` is `include_str!`'d for `--generate-config` and
+parsed by a test that asserts it produces exactly `Config::defaults()`. The
+reference block, the flag's output, and the actual defaults are therefore one
+thing, and cannot drift.
+
+### D81: a session drops a tab whose file has gone
+
+Restoring is best-effort by design. A tab pointing at a file that has since been
+deleted or renamed is dropped rather than opened empty, and a session that ends
+up with no tabs at all leaves the welcome screen alone.
