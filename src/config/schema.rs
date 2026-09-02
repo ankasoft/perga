@@ -160,6 +160,31 @@ impl Default for WikiLinkConfig {
     }
 }
 
+/// Project-wide search. The `[search]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SearchConfig {
+    /// Stop after this many hits and say the results were cut short.
+    pub max_results: usize,
+    /// Treat a query as a regular expression by default.
+    pub regex: bool,
+    /// Case-insensitive unless the query contains an upper-case character.
+    pub smart_case: bool,
+    /// Search files that are not Markdown.
+    pub all_files: bool,
+}
+
+impl Default for SearchConfig {
+    fn default() -> Self {
+        SearchConfig {
+            max_results: 1_000,
+            regex: false,
+            smart_case: true,
+            all_files: false,
+        }
+    }
+}
+
 /// Vault-wide behaviour. The `[general]` table.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
