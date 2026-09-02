@@ -18,7 +18,7 @@ use crate::ui::sidebar::outline::OutlineMode;
 use crate::ui::sidebar::search::SearchMode;
 
 /// Which of the four sidebar modes is showing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SidebarMode {
     /// The hierarchical vault tree.

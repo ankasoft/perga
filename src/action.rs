@@ -50,6 +50,8 @@ pub enum Action {
     FilesRemoved(Vec<PathBuf>),
     /// Watching had to be given up.
     WatchStopped(String),
+    /// A theme file changed, so the active theme is re-read.
+    ReloadTheme,
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.

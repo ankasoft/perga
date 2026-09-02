@@ -18,7 +18,7 @@ use crossbeam_channel::{unbounded, Sender};
 use perga::app::{self, App, Message};
 use perga::cli::{Cli, Shell, SidebarModeArg};
 use perga::config::keymap::Keymap;
-use perga::config::schema::{FilesConfig, UiConfig};
+use perga::config::Config;
 use perga::doc::document::Document;
 use perga::doc::print;
 use perga::terminal;
@@ -81,6 +81,11 @@ fn generate(cli: &Cli) -> anyhow::Result<bool> {
         return Ok(true);
     }
 
+    if cli.generate_config {
+        print!("{}", perga::config::DEFAULT_CONFIG);
+        return Ok(true);
+    }
+
     if let Some(shell) = cli.generate_completions {
         let shell = match shell {
             Shell::Bash => CompleteShell::Bash,
@@ -93,7 +98,49 @@ fn generate(cli: &Cli) -> anyhow::Result<bool> {
         return Ok(true);
     }
 
+    if cli.check_config {
+        return check_config(cli).map(|()| true);
+    }
+
     Ok(false)
+}
+
+/// Validate the configuration and the theme, print what is wrong, and exit.
+///
+/// Exits `0` whatever it finds: the configuration always loads, and the
+/// warnings are the output rather than a failure. A caller that wants a
+/// non-zero exit on a warning can count the lines.
+fn check_config(cli: &Cli) -> anyhow::Result<()> {
+    let root = cli
+        .path
+        .clone()
+        .filter(|path| path.is_dir())
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    let (_, warnings) = configure(cli, &root);
+
+    match perga::config::user_config_path() {
+        Some(path) if path.exists() => println!("config: {}", path.display()),
+        Some(path) => println!("config: {} (not present; using defaults)", path.display()),
+        None => println!("config: no configuration directory on this platform"),
+    }
+
+    let local = root.join(".perga.toml");
+    if local.exists() {
+        println!("vault config: {}", local.display());
+    }
+
+    if warnings.is_empty() {
+        println!("no problems found");
+        return Ok(());
+    }
+
+    println!("\n{} problems:", warnings.len());
+    for warning in &warnings {
+        println!("  {warning}");
+    }
+
+    Ok(())
 }
 
 /// What perga was asked to open.
@@ -192,45 +239,116 @@ fn print_width(cli: &Cli) -> u16 {
     print::DEFAULT_WIDTH
 }
 
-/// Set up the terminal, run the event loop, and tear the terminal down again.
-fn run(cli: &Cli) -> anyhow::Result<u8> {
-    let target = Target::resolve(cli.path.as_deref())?;
+/// Assemble the configuration and everything derived from it.
+///
+/// Returns the application and every warning raised on the way, which the
+/// status bar shows and `--check-config` prints.
+fn configure(cli: &Cli, root: &Path) -> (App, Vec<String>) {
+    let mut config = Config::load(root, cli.config.as_deref(), cli.no_config);
+    let mut warnings = std::mem::take(&mut config.warnings);
 
-    let mut ui_config = UiConfig::default();
+    // Layer five: individual flags, which override every file.
     if cli.no_sidebar {
-        ui_config.sidebar_visible = false;
+        config.ui.sidebar_visible = false;
     }
     if cli.no_mouse {
-        ui_config.mouse = false;
+        config.ui.mouse = false;
     }
     if let Some(mode) = cli.sidebar {
-        ui_config.sidebar_default_mode = match mode {
+        config.ui.sidebar_default_mode = match mode {
             SidebarModeArg::Files => SidebarMode::Files,
             SidebarModeArg::Search => SidebarMode::Search,
             SidebarModeArg::Outline => SidebarMode::Outline,
             SidebarModeArg::Links => SidebarMode::Links,
         };
     }
-
-    let mut files_config = FilesConfig::default();
     if cli.all {
-        files_config.show_all = true;
+        config.files.show_all = true;
     }
     if cli.no_gitignore {
-        files_config.respect_gitignore = false;
+        config.files.respect_gitignore = false;
+    }
+    if let Some(name) = &cli.theme {
+        config.theme.name.clone_from(name);
+    }
+    if let Some(wrap) = cli.wrap {
+        config.general.wrap = wrap;
     }
 
-    let mut theme = Theme::dark();
+    let theme = resolve_theme(&config, &mut warnings);
+    let keymap = Keymap::with_overrides(&config.keys);
+    warnings.extend(keymap.warnings().iter().cloned());
+
+    let mut app = App::new(theme, keymap, config.ui.clone(), config.files.clone());
+    app.general = config.general;
+    app.wikilinks = config.wikilinks;
+    app.search_config = config.search;
+    app.editor_config = config.editor;
+    app.watch_config = config.watch;
+    app.session_config = config.session;
+    app.theme_config = config.theme;
+    app.set_vault_root(root);
+
+    (app, warnings)
+}
+
+/// Resolve the configured theme, degrading it to what the terminal can show.
+fn resolve_theme(config: &Config, warnings: &mut Vec<String>) -> Theme {
+    let dir = if config.theme.dir.as_os_str().is_empty() {
+        perga::config::user_theme_dir()
+    } else {
+        Some(config.theme.dir.clone())
+    };
+
+    let mut theme = Theme::resolve(&config.theme.name, dir.as_deref(), warnings);
+
+    if theme.code_theme.is_none() {
+        theme.code_theme = Some(config.theme.code_theme.clone());
+    }
+
+    // Order matters: degrade first, then strip. `NO_COLOR` wins over
+    // everything, and degrading a stripped theme would have nothing to do.
+    if !perga::theme::truecolor() {
+        theme.degrade_to_256();
+    }
     if no_color() {
         theme.strip_colors();
     }
 
-    let mut app = App::new(theme, Keymap::defaults(), ui_config, files_config);
+    theme
+}
+
+/// Set up the terminal, run the event loop, and tear the terminal down again.
+fn run(cli: &Cli) -> anyhow::Result<u8> {
+    let target = Target::resolve(cli.path.as_deref())?;
+
+    let root = match &target {
+        Target::Vault(root) => root.clone(),
+        Target::File { root, .. } => root.clone(),
+    };
+
+    let (mut app, warnings) = configure(cli, &root);
+
+    if let Some(first) = warnings.first() {
+        app.status.set(
+            if warnings.len() == 1 {
+                first.clone()
+            } else {
+                format!("{first} (and {} more; --check-config)", warnings.len() - 1)
+            },
+            perga::app::Severity::Warning,
+        );
+    }
 
     match &target {
-        Target::Vault(root) => app.set_vault_root(root),
-        Target::File { path, root } => {
-            app.set_vault_root(root);
+        Target::Vault(_) => {
+            // Section 9.10: a session is restored only when perga was opened
+            // with no path — a named file is what the reader asked for.
+            if cli.path.is_none() && !cli.no_session {
+                app.restore_session();
+            }
+        }
+        Target::File { path, .. } => {
             let document = Document::load(path)
                 .with_context(|| format!("cannot read `{}`", path.display()))?;
             app.open(document);
@@ -264,6 +382,16 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
         let _ = watch_tx.send(Message::Watch(event));
     });
 
+    // The theme directory is watched too, so writing a theme shows its effect
+    // without restarting. Any change there means the same thing: re-read.
+    let theme_tx = tx.clone();
+    app.start_theme_watch(move |event| {
+        if matches!(event, perga::vault::watch::WatchEvent::Stopped(_)) {
+            return;
+        }
+        let _ = theme_tx.send(Message::ThemeChanged);
+    });
+
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
 
@@ -284,6 +412,10 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
     }
 
     let result = app::run(&mut term, &mut app, &rx);
+
+    if !cli.no_session {
+        app.save_session();
+    }
 
     // Restore before propagating, so an error message is not swallowed by the
     // alternate screen.

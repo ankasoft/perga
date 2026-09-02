@@ -15,7 +15,8 @@ use ratatui::layout::Rect;
 use crate::action::Action;
 use crate::config::keymap::Keymap;
 use crate::config::schema::{
-    EditorConfig, FilesConfig, GeneralConfig, SearchConfig, UiConfig, WatchConfig, WikiLinkConfig,
+    EditorConfig, FilesConfig, GeneralConfig, SearchConfig, SessionConfig, ThemeConfig, UiConfig,
+    WatchConfig, WikiLinkConfig,
 };
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
@@ -470,8 +471,14 @@ pub struct App {
     pub external_edit: Option<PathBuf>,
     /// The `[watch]` table.
     pub watch_config: WatchConfig,
+    /// The `[session]` table.
+    pub session_config: SessionConfig,
+    /// The `[theme]` table, kept so a session can record what was chosen.
+    pub theme_config: ThemeConfig,
     /// The running watch. Dropping it stops watching.
     watch: Option<crate::vault::watch::WatchHandle>,
+    /// The watch on the theme directory, for hot reload while authoring one.
+    theme_watch: Option<crate::vault::watch::WatchHandle>,
     /// The last project-wide search.
     pub search: SearchState,
     /// Documents opened this session, most recent first.
@@ -551,7 +558,10 @@ impl App {
             own_writes: crate::vault::watch::OwnWrites::default(),
             external_edit: None,
             watch_config: WatchConfig::default(),
+            session_config: SessionConfig::default(),
+            theme_config: ThemeConfig::default(),
             watch: None,
+            theme_watch: None,
             search: SearchState::default(),
             recent: Vec::new(),
             search_handle: None,
@@ -775,6 +785,7 @@ impl App {
             Action::FilesChanged(paths) => self.files_changed(&paths),
             Action::FilesRemoved(paths) => self.files_removed(&paths),
             Action::WatchStopped(reason) => self.status.set(reason, Severity::Warning),
+            Action::ReloadTheme => self.reload_theme(),
             Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
 
             // -- Sidebar ---------------------------------------------------
@@ -2301,6 +2312,82 @@ impl App {
         self.recent.truncate(MAX_RECENT);
     }
 
+    // -- Session -------------------------------------------------------------
+
+    /// Reopen the tabs, the sidebar, and the recent list from the last run.
+    ///
+    /// A tab whose file has gone since is dropped rather than opened empty: a
+    /// session is a convenience, and reconstructing one badly is worse than
+    /// opening on the welcome screen.
+    pub fn restore_session(&mut self) {
+        if !self.session_config.restore {
+            return;
+        }
+
+        let Some(session) = crate::config::session::Session::load(&self.vault.root) else {
+            return;
+        };
+
+        self.sidebar.visible = session.sidebar_visible;
+        self.sidebar.width = session.sidebar_width;
+        self.sidebar.mode = session.sidebar_mode;
+        self.recent = session.recent;
+        self.recent.truncate(self.session_config.max_recent);
+
+        let mut restored = Vec::new();
+        for saved in &session.tabs {
+            let absolute = self.vault.absolute(&saved.path);
+            let Ok(document) = Document::load(&absolute) else {
+                continue;
+            };
+
+            let mut tab = Tab::with_document(document);
+            tab.scroll = saved.scroll;
+            restored.push(tab);
+        }
+
+        if restored.is_empty() {
+            return;
+        }
+
+        self.active_tab = session.active_tab.min(restored.len() - 1);
+        self.tabs = restored;
+    }
+
+    /// Write the session for this vault.
+    pub fn save_session(&self) {
+        if !self.session_config.restore {
+            return;
+        }
+
+        let session = crate::config::session::Session {
+            version: crate::config::session::VERSION,
+            tabs: self
+                .tabs
+                .iter()
+                .filter_map(|tab| {
+                    let doc = tab.doc.as_ref()?;
+                    Some(crate::config::session::SavedTab {
+                        path: self.vault.relative(&doc.path)?.to_path_buf(),
+                        scroll: tab.scroll,
+                    })
+                })
+                .collect(),
+            active_tab: self.active_tab,
+            sidebar_visible: self.sidebar.visible,
+            sidebar_width: self.sidebar.width,
+            sidebar_mode: self.sidebar.mode,
+            theme: Some(self.theme.name.clone()),
+            recent: self.recent.clone(),
+        };
+
+        // A session that cannot be written costs the next run its tabs and
+        // nothing else, so it is logged rather than shown.
+        if let Err(e) = session.save(&self.vault.root) {
+            tracing::warn!("cannot write the session: {e}");
+        }
+    }
+
     // -- Live reload ---------------------------------------------------------
 
     /// Start watching the vault for changes.
@@ -2314,6 +2401,56 @@ impl App {
             std::time::Duration::from_millis(self.watch_config.debounce_ms),
             sink,
         ));
+    }
+
+    /// The directory user themes are read from.
+    pub fn theme_dir(&self) -> Option<PathBuf> {
+        if self.theme_config.dir.as_os_str().is_empty() {
+            crate::config::user_theme_dir()
+        } else {
+            Some(self.theme_config.dir.clone())
+        }
+    }
+
+    /// Watch the theme directory, so authoring a theme shows its effect.
+    pub fn start_theme_watch(&mut self, sink: impl Fn(WatchEvent) + Send + Sync + 'static) {
+        let Some(dir) = self.theme_dir().filter(|dir| dir.is_dir()) else {
+            return;
+        };
+
+        self.theme_watch = Some(crate::vault::watch::spawn(
+            dir,
+            std::time::Duration::from_millis(self.watch_config.debounce_ms),
+            sink,
+        ));
+    }
+
+    /// Re-read the configured theme from disk.
+    pub fn reload_theme(&mut self) {
+        let dir = self.theme_dir();
+        let mut warnings = Vec::new();
+
+        let mut theme = Theme::resolve(&self.theme_config.name, dir.as_deref(), &mut warnings);
+        if theme.code_theme.is_none() {
+            theme.code_theme = Some(self.theme_config.code_theme.clone());
+        }
+
+        if let Some(warning) = warnings.first() {
+            self.status.set(warning.clone(), Severity::Warning);
+            return;
+        }
+
+        self.theme = theme;
+        // Every cached line carries the styles it was rendered with, so a new
+        // theme means every block has to be drawn again.
+        for tab in &mut self.tabs {
+            tab.layout = RenderedDocument::new();
+        }
+
+        self.status.set(
+            format!("Theme reloaded: {}", self.theme.name),
+            Severity::Info,
+        );
     }
 
     /// Handle a debounced batch of changes.
@@ -3051,6 +3188,8 @@ pub enum Message {
     Search(SearchEvent),
     /// The filesystem watcher reported something.
     Watch(WatchEvent),
+    /// A theme file changed.
+    ThemeChanged,
 }
 
 /// Run the application until it quits.

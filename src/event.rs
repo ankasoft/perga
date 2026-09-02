@@ -29,6 +29,7 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
         Message::SyntaxReady => vec![Action::SyntaxReady],
+        Message::ThemeChanged => vec![Action::ReloadTheme],
         Message::Watch(event) => vec![match event {
             WatchEvent::Changed(paths) => Action::FilesChanged(paths),
             WatchEvent::Removed(paths) => Action::FilesRemoved(paths),
