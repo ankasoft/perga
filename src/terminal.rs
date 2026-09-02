@@ -184,6 +184,73 @@ pub fn install_panic_hook() {
     }));
 }
 
+/// Put text on the system clipboard with OSC 52.
+///
+/// The one way a terminal application can reach the clipboard of the machine
+/// the *terminal* is running on, which over SSH is not the machine perga is.
+/// Not every emulator honours it — several disable it by default as a security
+/// measure — and there is no reply to wait for, so the caller says what it
+/// tried rather than what happened.
+pub fn copy_to_clipboard(text: &str) -> std::io::Result<()> {
+    use base64_encode as encode;
+    use std::io::Write as _;
+
+    let mut out = std::io::stdout().lock();
+    write!(out, "\x1b]52;c;{}\x07", encode(text.as_bytes()))?;
+    out.flush()
+}
+
+/// Base64, as OSC 52 requires.
+///
+/// Twenty lines rather than a dependency: this is the only place in perga that
+/// needs it, and the alphabet has not changed since 1987.
+fn base64_encode(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+
+    for chunk in bytes.chunks(3) {
+        let b = [
+            chunk[0],
+            chunk.get(1).copied().unwrap_or(0),
+            chunk.get(2).copied().unwrap_or(0),
+        ];
+        let triple = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+
+        for i in 0..4 {
+            if i <= chunk.len() {
+                let index = (triple >> (18 - 6 * i)) & 0x3f;
+                out.push(ALPHABET[index as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+
+    out
+}
+
+#[cfg(test)]
+mod clipboard_tests {
+    use super::base64_encode;
+
+    #[test]
+    fn base64_matches_the_standard_vectors() {
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"f"), "Zg==");
+        assert_eq!(base64_encode(b"fo"), "Zm8=");
+        assert_eq!(base64_encode(b"foo"), "Zm9v");
+        assert_eq!(base64_encode(b"foob"), "Zm9vYg==");
+        assert_eq!(base64_encode(b"fooba"), "Zm9vYmE=");
+        assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn base64_handles_non_ascii() {
+        assert_eq!(base64_encode("ışık".as_bytes()), "xLHFn8Sxaw==");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

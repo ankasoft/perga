@@ -860,6 +860,7 @@ impl App {
             Action::RenameDocument => self.open_prompt(PromptKind::RenameDocument),
             Action::TreeRename => self.open_prompt(PromptKind::RenameTreeEntry),
             Action::OpenInExternalEditor => self.hand_to_external_editor(),
+            Action::CopyDocumentPath => self.copy_document_path(),
 
             // -- Find in document -------------------------------------------
             Action::OpenFindInDocument => self.open_find(),
@@ -885,9 +886,6 @@ impl App {
             Action::Confirm(key) => self.confirm(key),
             Action::HistoryBack => self.navigate_history(false),
             Action::HistoryForward => self.navigate_history(true),
-
-            // Actions whose handlers arrive with the features that need them.
-            _ => {}
         }
     }
 
@@ -1639,6 +1637,26 @@ impl App {
                 format!("Cannot reload {}: {e}", path.display()),
                 Severity::Error,
             ),
+        }
+    }
+
+    /// Put the active document's path on the clipboard.
+    fn copy_document_path(&mut self) {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+
+        // The path relative to the vault, which is what a reader pasting it
+        // into a note or a message means by "the path".
+        let shown = doc.display_path(&self.vault.root);
+
+        match crate::terminal::copy_to_clipboard(&shown) {
+            // OSC 52 has no reply, and several emulators disable it, so this
+            // says what was sent rather than claiming it arrived.
+            Ok(()) => self.status.set(format!("Copied {shown}"), Severity::Info),
+            Err(e) => self
+                .status
+                .set(format!("Cannot copy: {e}"), Severity::Error),
         }
     }
 
