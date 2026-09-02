@@ -528,6 +528,31 @@ pub fn default_bindings() -> Vec<BindingSpec> {
     ]
 }
 
+/// The name an action is written as in a `[keys]` table.
+///
+/// The snake-cased variant name, so `ToggleSidebar` is `toggle_sidebar` and
+/// `SetSidebarMode(Files)` is `sidebar_mode_files`. Derived rather than listed,
+/// so a new action cannot be added without a name.
+pub fn action_name(action: &Action) -> String {
+    if let Action::SetSidebarMode(mode) = action {
+        return format!("sidebar_mode_{mode}");
+    }
+
+    // `Debug` prints the variant name, which for every bindable action is the
+    // whole of it: none of them carry a payload except the one above.
+    let debug = format!("{action:?}");
+    let variant = debug.split('(').next().unwrap_or(&debug);
+
+    let mut out = String::with_capacity(variant.len() + 4);
+    for (at, c) in variant.char_indices() {
+        if c.is_uppercase() && at > 0 {
+            out.push('_');
+        }
+        out.extend(c.to_lowercase());
+    }
+    out
+}
+
 /// What a key press did to the keymap.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolution {
@@ -603,6 +628,95 @@ impl Keymap {
             }
         }
 
+        keymap
+    }
+
+    /// Build the keymap from the defaults with the user's `[keys]` applied.
+    ///
+    /// A remap *replaces* an action's default bindings rather than adding to
+    /// them: a user who writes `"quit" = "ctrl+q"` means `q` should stop
+    /// quitting, and a remap that only ever added would leave them unable to
+    /// free a key.
+    pub fn with_overrides(remaps: &toml::Table) -> Self {
+        let mut keymap = Keymap::default();
+        let mut overrides: HashMap<String, Vec<KeySequence>> = HashMap::new();
+        let mut warnings = Vec::new();
+
+        for (name, value) in remaps {
+            let written = match value {
+                toml::Value::String(one) => vec![one.clone()],
+                toml::Value::Array(many) => many
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect(),
+                _ => {
+                    warnings.push(format!(
+                        "`keys.{name}` must be a binding or a list of bindings"
+                    ));
+                    continue;
+                }
+            };
+
+            if !default_bindings()
+                .iter()
+                .any(|spec| action_name(&spec.action) == *name)
+            {
+                warnings.push(format!("`keys.{name}` is not an action"));
+                continue;
+            }
+
+            let mut sequences = Vec::new();
+            for key in written {
+                match KeySequence::parse(&key) {
+                    Ok(sequence) => sequences.push(sequence),
+                    Err(e) => warnings.push(format!("`keys.{name} = \"{key}\"` ignored: {e}")),
+                }
+            }
+
+            if !sequences.is_empty() {
+                overrides.insert(name.clone(), sequences);
+            }
+        }
+
+        for spec in default_bindings() {
+            let name = action_name(&spec.action);
+
+            let sequences = match overrides.get(&name) {
+                Some(remapped) => remapped.clone(),
+                None => spec
+                    .keys
+                    .iter()
+                    .map(|key| {
+                        KeySequence::parse(key)
+                            .unwrap_or_else(|e| panic!("default binding `{key}` must parse: {e}"))
+                    })
+                    .collect(),
+            };
+
+            keymap.entries.push(ResolvedBinding {
+                action: spec.action.clone(),
+                context: spec.context,
+                sequences: sequences.clone(),
+                description: spec.description,
+            });
+
+            for sequence in sequences {
+                // Last definition wins, and the action it displaced is named:
+                // a binding silently swallowed by another is the hardest kind
+                // of configuration bug to find.
+                if let Some(shadowed) = keymap.bindings.get(&(spec.context, sequence.clone())) {
+                    if *shadowed != spec.action {
+                        warnings.push(format!(
+                            "`{sequence}` is bound to both `{}` and `{name}`; `{name}` wins",
+                            action_name(shadowed)
+                        ));
+                    }
+                }
+                keymap.insert(spec.context, sequence, spec.action.clone());
+            }
+        }
+
+        keymap.warnings = warnings;
         keymap
     }
 
@@ -979,6 +1093,189 @@ mod tests {
                     entry.action
                 );
             }
+        }
+    }
+
+    // -- Remapping ---------------------------------------------------------
+
+    fn remapped(toml_text: &str) -> Keymap {
+        Keymap::with_overrides(&toml::from_str(toml_text).unwrap())
+    }
+
+    #[test]
+    fn an_action_name_is_its_snake_cased_variant() {
+        assert_eq!(action_name(&Action::ToggleSidebar), "toggle_sidebar");
+        assert_eq!(action_name(&Action::Quit), "quit");
+        assert_eq!(action_name(&Action::ScrollTop), "scroll_top");
+        assert_eq!(
+            action_name(&Action::SetSidebarMode(SidebarMode::Outline)),
+            "sidebar_mode_outline"
+        );
+    }
+
+    /// One action may appear in two contexts — `escape` is bound in both
+    /// `Global` and `Edit` — and a remap of it moves both. What must not
+    /// happen is two *different* actions answering to one name.
+    #[test]
+    fn no_two_actions_share_a_name() {
+        let mut pairs: Vec<(String, String)> = default_bindings()
+            .iter()
+            .map(|spec| (action_name(&spec.action), format!("{:?}", spec.action)))
+            .collect();
+
+        pairs.sort();
+        pairs.dedup();
+
+        let mut names: Vec<&String> = pairs.iter().map(|(name, _)| name).collect();
+        let count = names.len();
+        names.dedup();
+
+        assert_eq!(names.len(), count, "two actions share a name in `[keys]`");
+    }
+
+    #[test]
+    fn no_overrides_is_the_default_keymap() {
+        let mut remapped = remapped("");
+        let mut defaults = Keymap::defaults();
+
+        assert!(remapped.warnings().is_empty());
+        assert_eq!(
+            remapped.resolve(KeyContext::Global, KeyChord::parse("q").unwrap()),
+            defaults.resolve(KeyContext::Global, KeyChord::parse("q").unwrap())
+        );
+    }
+
+    #[test]
+    fn a_remap_replaces_the_default_rather_than_adding_to_it() {
+        let mut keymap = remapped(r#""quit" = "ctrl+q""#);
+
+        assert_eq!(
+            keymap.resolve(KeyContext::Global, KeyChord::parse("ctrl+q").unwrap()),
+            Resolution::Action(Action::Quit)
+        );
+        assert_eq!(
+            keymap.resolve(KeyContext::Global, KeyChord::parse("q").unwrap()),
+            Resolution::Unbound,
+            "a remap must be able to free a key"
+        );
+    }
+
+    #[test]
+    fn a_remap_may_be_a_list() {
+        let mut keymap = remapped(r#""quit" = ["x", "ctrl+q"]"#);
+
+        for key in ["x", "ctrl+q"] {
+            assert_eq!(
+                keymap.resolve(KeyContext::Global, KeyChord::parse(key).unwrap()),
+                Resolution::Action(Action::Quit)
+            );
+        }
+    }
+
+    #[test]
+    fn a_remap_may_be_a_sequence() {
+        let mut keymap = remapped(r#""scroll_top" = "g h""#);
+
+        assert!(matches!(
+            keymap.resolve(KeyContext::Viewport, KeyChord::parse("g").unwrap()),
+            Resolution::Pending(_)
+        ));
+        assert_eq!(
+            keymap.resolve(KeyContext::Viewport, KeyChord::parse("h").unwrap()),
+            Resolution::Action(Action::ScrollTop)
+        );
+    }
+
+    #[test]
+    fn the_help_overlay_follows_a_remap() {
+        let keymap = remapped(r#""toggle_sidebar" = "ctrl+space""#);
+
+        assert_eq!(
+            keymap.binding_for(&Action::ToggleSidebar).as_deref(),
+            Some("Ctrl+Space")
+        );
+    }
+
+    #[test]
+    fn an_unparseable_binding_is_a_warning_and_the_default_survives() {
+        let mut keymap = remapped(r#""quit" = "gt""#);
+
+        assert_eq!(keymap.warnings().len(), 1);
+        assert!(
+            keymap.warnings()[0].contains("keys.quit"),
+            "{:?}",
+            keymap.warnings()
+        );
+        assert_eq!(
+            keymap.resolve(KeyContext::Global, KeyChord::parse("q").unwrap()),
+            Resolution::Action(Action::Quit)
+        );
+    }
+
+    #[test]
+    fn an_unknown_action_is_a_warning() {
+        let keymap = remapped(r#""fly_to_the_moon" = "f""#);
+
+        assert_eq!(keymap.warnings().len(), 1);
+        assert!(keymap.warnings()[0].contains("not an action"));
+    }
+
+    #[test]
+    fn a_remap_of_the_wrong_shape_is_a_warning() {
+        let keymap = remapped(r#""quit" = 3"#);
+
+        assert_eq!(keymap.warnings().len(), 1);
+        assert!(keymap.warnings()[0].contains("keys.quit"));
+    }
+
+    #[test]
+    fn a_conflict_names_the_action_it_shadowed() {
+        // `?` is the help overlay by default; giving it to `quit` shadows it.
+        let keymap = remapped(r#""quit" = "?""#);
+
+        assert!(
+            keymap
+                .warnings()
+                .iter()
+                .any(|w| w.contains("toggle_help") && w.contains('?')),
+            "{:?}",
+            keymap.warnings()
+        );
+    }
+
+    #[test]
+    fn ten_remapped_actions_all_take_effect() {
+        let mut keymap = remapped(
+            r#"
+            "quit" = "Q"
+            "toggle_help" = "f1"
+            "toggle_sidebar" = "ctrl+space"
+            "new_tab" = "ctrl+shift+t"
+            "close_tab" = "ctrl+shift+w"
+            "scroll_top" = "home"
+            "scroll_bottom" = "end"
+            "next_link" = "ctrl+j"
+            "prev_link" = "ctrl+k"
+            "open_quick_switcher" = "ctrl+p"
+            "#,
+        );
+
+        assert!(keymap.warnings().is_empty(), "{:?}", keymap.warnings());
+
+        for (key, context, action) in [
+            ("Q", KeyContext::Global, Action::Quit),
+            ("f1", KeyContext::Global, Action::ToggleHelp),
+            ("ctrl+space", KeyContext::Global, Action::ToggleSidebar),
+            ("ctrl+p", KeyContext::Global, Action::OpenQuickSwitcher),
+            ("home", KeyContext::Viewport, Action::ScrollTop),
+            ("end", KeyContext::Viewport, Action::ScrollBottom),
+            ("ctrl+j", KeyContext::Viewport, Action::NextLink),
+        ] {
+            assert_eq!(
+                keymap.resolve(context, KeyChord::parse(key).unwrap()),
+                Resolution::Action(action),
+                "`{key}` did not remap"
+            );
         }
     }
 }

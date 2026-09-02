@@ -160,6 +160,28 @@ impl Default for WikiLinkConfig {
     }
 }
 
+/// Theme selection. The `[theme]` table.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ThemeConfig {
+    /// `auto`, a built-in name, or the stem of a file in [`ThemeConfig::dir`].
+    pub name: String,
+    /// An extra theme directory. Empty means `$XDG_CONFIG_HOME/perga/themes`.
+    pub dir: std::path::PathBuf,
+    /// The `syntect` theme for fenced code blocks.
+    pub code_theme: String,
+}
+
+impl Default for ThemeConfig {
+    fn default() -> Self {
+        ThemeConfig {
+            name: "auto".to_string(),
+            dir: std::path::PathBuf::new(),
+            code_theme: "base16-ocean.dark".to_string(),
+        }
+    }
+}
+
 /// Project-wide search. The `[search]` table.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]

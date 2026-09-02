@@ -1,0 +1,98 @@
+[general]
+# Directory opened when no PATH argument is given.
+start_path = "."
+# Read .perga.toml from the vault root (presentation keys only — see Section 10).
+allow_local_config = true
+# Follow symlinks while walking the vault.
+follow_symlinks = false
+# Hard wrap width; 0 fits the viewport.
+wrap = 0
+# Expand tabs in source to this many spaces when rendering.
+tab_width = 4
+
+[ui]
+sidebar_visible = true
+sidebar_width = 32
+# files | search | outline | links
+sidebar_default_mode = "files"
+# Show the tab bar even with a single tab open.
+always_show_tabs = false
+show_line_numbers = false
+show_status_bar = true
+# Lines scrolled per mouse wheel notch.
+mouse_scroll_lines = 3
+# Capture the mouse. Off leaves terminal text selection available.
+mouse = true
+# Auto-hide the sidebar below this terminal width.
+narrow_threshold = 80
+
+[files]
+# Include dotted directories such as .github and .claude.
+include_hidden = true
+# Honour .gitignore, .ignore, and global gitignore.
+respect_gitignore = true
+# Show files that are not Markdown.
+show_all = false
+# name | mtime | size
+sort = "name"
+sort_reverse = false
+# Additional extensions treated as Markdown.
+extensions = ["md", "markdown", "mdx"]
+# Note: .git, .hg, .svn, and .jj are always excluded and this is not configurable.
+
+[theme]
+# auto | dark | light | high-contrast | <filename in theme.dir>
+# auto picks dark or light from the terminal background (Section 11.3).
+name = "auto"
+# Extra theme directory; defaults to $XDG_CONFIG_HOME/perga/themes
+dir = ""
+# syntect theme for fenced code blocks.
+code_theme = "base16-ocean.dark"
+
+[wikilinks]
+enabled = true
+extensions = ["md", "markdown"]
+# path-first | filename-first
+resolution = "path-first"
+# Build the backlink index at startup.
+index_on_start = true
+# Cache the index between runs.
+cache = true
+# Where files created from a broken [[wiki-link]] go; empty = active document's dir.
+new_file_dir = ""
+
+[search]
+max_results = 1000
+regex = false
+# Case-insensitive unless the query contains uppercase.
+smart_case = true
+# Include non-Markdown files in project search.
+all_files = false
+
+[editor]
+# Command for `o`; $EDITOR is used when empty.
+external_command = ""
+tab_size = 4
+insert_spaces = true
+wrap = false
+autosave = false
+autosave_interval_secs = 30
+# Show whitespace characters.
+show_whitespace = false
+# Seed new files created with Ctrl+N with a frontmatter title.
+new_file_frontmatter = false
+
+[watch]
+enabled = true
+debounce_ms = 200
+
+[session]
+restore = true
+max_recent = 50
+
+[keys]
+# Remap any action. See docs/keybindings.md for action names and key syntax.
+# Example:
+# "toggle_sidebar" = "ctrl+space"
+# "quit" = ["q", "ctrl+q"]
+# "scroll_top" = "g g"          # sequences are space-separated tokens
