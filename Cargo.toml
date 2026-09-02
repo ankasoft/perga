@@ -62,8 +62,55 @@ harness = false
 name = "vault"
 harness = false
 
+# -- Packaging ---------------------------------------------------------------
+#
+# Both of these expect `cargo build --release` and the auxiliary files
+# generated from the built binary; see packaging/README.md.
+
+[package.metadata.deb]
+section = "utils"
+priority = "optional"
+extended-description = """
+perga is a terminal Markdown browser: a full-screen TUI that opens a directory
+of Markdown files and lets you navigate, read, search, and edit them with the
+ergonomics of a document browser rather than a pager.
+
+A persistent hierarchical sidebar, a document viewport with tabs, browser-like
+back/forward history per tab, wiki-links with backlinks, and in-place editing.
+"""
+assets = [
+    ["target/release/perga", "usr/bin/", "755"],
+    ["target/assets/perga.1", "usr/share/man/man1/", "644"],
+    ["target/assets/completions/perga.bash", "usr/share/bash-completion/completions/perga", "644"],
+    ["target/assets/completions/perga.zsh", "usr/share/zsh/vendor-completions/_perga", "644"],
+    ["target/assets/completions/perga.fish", "usr/share/fish/vendor_completions.d/perga.fish", "644"],
+    ["LICENSE-MIT", "usr/share/doc/perga/LICENSE-MIT", "644"],
+    ["LICENSE-APACHE", "usr/share/doc/perga/LICENSE-APACHE", "644"],
+    ["README.md", "usr/share/doc/perga/README.md", "644"],
+]
+
+[package.metadata.generate-rpm]
+summary = "A terminal Markdown browser"
+# Both licences, as an SPDX expression, because the user picks.
+license = "MIT OR Apache-2.0"
+assets = [
+    { source = "target/release/perga", dest = "/usr/bin/perga", mode = "755" },
+    { source = "target/assets/perga.1", dest = "/usr/share/man/man1/perga.1", mode = "644", doc = true },
+    { source = "target/assets/completions/perga.bash", dest = "/usr/share/bash-completion/completions/perga", mode = "644" },
+    { source = "target/assets/completions/perga.zsh", dest = "/usr/share/zsh/site-functions/_perga", mode = "644" },
+    { source = "target/assets/completions/perga.fish", dest = "/usr/share/fish/vendor_completions.d/perga.fish", mode = "644" },
+    { source = "LICENSE-MIT", dest = "/usr/share/licenses/perga/LICENSE-MIT", mode = "644", doc = true },
+    { source = "LICENSE-APACHE", dest = "/usr/share/licenses/perga/LICENSE-APACHE", mode = "644", doc = true },
+    { source = "README.md", dest = "/usr/share/doc/perga/README.md", mode = "644", doc = true },
+]
+
 [profile.release]
 lto = "fat"
 codegen-units = 1
 strip = true
 panic = "abort"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

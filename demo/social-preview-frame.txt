@@ -1,0 +1,22 @@
+ perga docs/api/auth.md                                                                                            1/12
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│FILES search outline links    ││# Authentication                                                                      │
+│31 entries                    ││                                                                                      │
+│▸ .github                     ││This service uses Bearer tokens. See setup for the full walkthrough, and [[Token      │
+│▾ docs                        ││Rotation]] for the rotation policy.                                                   │
+│  ▾ api                       ││                                                                                      │
+│      ambiguous.md            ││## Obtaining a token                                                                  │
+│    ● auth.md                 ││                                                                                      │
+│      errors.md               ││curl -X POST /auth/token \                                                            │
+│      webhooks.md             ││  -d '{"key":"..."}'                                                                  │
+│  ▸ guides                    ││                                                                                      │
+│▸ spaces and #hash            ││Back to the index.                                                                    │
+│  anchors.md                  ││                                                                                      │
+│  broken-links.md             ││                                                                                      │
+│  crlf.md                     ││                                                                                      │
+│  cycle-a.md                  ││                                                                                      │
+│  cycle-b.md                  ││                                                                                      │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││                                                                                      │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
