@@ -832,6 +832,16 @@ Recorded honestly, per the environment caveat in Section 17.
   repository; it has to be uploaded under Settings → Social preview by hand.
   Noted in `demo/README.md`.
 
+### D87a: the release was not tagged
+
+Everything up to the tag is done: the pipeline is generated and checked, the
+packaging artefacts are written, `cargo publish --dry-run` passes, and
+`docs/publishing.md` carries the checklist. The tag itself was not created,
+because `v0.1.0` is a release marker and the release it would mark is not
+finished: the demo GIF does not exist yet, and the musl artefacts have never
+been built anywhere. Tagging is step 5 of the checklist for a reason, and
+steps 3 and 4 come first.
+
 ### D87: `cargo deny check` passes, and the allow list was narrowed to fit
 
 `advisories ok, bans ok, licenses ok, sources ok` on the committed dependency

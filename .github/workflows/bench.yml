@@ -22,7 +22,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run benchmarks
-        run: cargo bench --bench render -- --output-format bencher | tee bench.txt
+        run: cargo bench --bench render --bench vault -- --output-format bencher | tee bench.txt
 
       - name: Run the ignored timing tests
         run: cargo test --release -- --ignored --nocapture | tee -a bench.txt
