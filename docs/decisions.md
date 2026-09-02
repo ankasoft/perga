@@ -796,7 +796,17 @@ without guessing at the geometry.
 
 Recorded honestly, per the environment caveat in Section 17.
 
-**Verified on this machine:**
+**Verified on this machine, by driving the real binary through a pseudo-terminal:**
+
+- The application starts on the fixture vault, draws the tree, walks into a
+  directory with `l`, opens a document through the quick switcher, renders it,
+  shows the help overlay generated from the keymap, and quits on `q`.
+- Teardown is clean on every path tried: the alternate screen is left, the
+  cursor comes back, and mouse tracking and bracketed paste are turned off. The
+  same holds after `--debug-panic`, where the panic message is readable on the
+  restored terminal and the exit status is a panic's.
+
+**Also verified:**
 
 - `dist init` ran, `dist plan` lists exactly the artefacts Section 16.3 asks
   for, and `dist generate --check` passes.
