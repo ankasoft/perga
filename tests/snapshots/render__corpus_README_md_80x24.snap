@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga README.md                                                           1/26
 ┌──────────────────────────────┐┌──────────────────────────────────────────────█
 │FILES search outline links    ││# Fixture Vault                               █
-│30 entries                    ││                                              █
+│31 entries                    ││                                              █
 │▸ .github                     ││A corpus for perga's tests. Every Markdown    █
 │▸ docs                        ││feature perga renders appears somewhere below █
 │▸ spaces and #hash            ││or in one of the linked documents.            █
@@ -23,6 +23,6 @@ expression: "frame(&mut app, width, height)"
 │● README.md                   ││                                              █
 │  unicode.md                  ││## An image                                   ║
 │  wide.md                     ││                                              ║
-│                              ││[image: a diagram of the pipeline]            ║
+│  wiki.md                     ││[image: a diagram of the pipeline]            ║
 └──────────────────────────────┘└──────────────────────────────────────────────║
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

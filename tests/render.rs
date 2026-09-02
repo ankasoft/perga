@@ -90,6 +90,39 @@ fn outline_and_find() {
     insta::assert_snapshot!("find_bar", frame(&mut app, 120, 40));
 }
 
+/// The links mode, with outgoing links and backlinks.
+#[test]
+fn sidebar_links_populated() {
+    let mut app = common::app_with("docs/guides/Token Rotation.md", 120, 40);
+    app.index_now();
+    frame(&mut app, 120, 40);
+    app.update(Action::SetSidebarMode(
+        perga::ui::sidebar::SidebarMode::Links,
+    ));
+    insta::assert_snapshot!(frame(&mut app, 120, 40));
+}
+
+/// The disambiguation overlay a wiki-link with two candidates produces.
+#[test]
+fn disambiguation_overlay() {
+    let mut app = common::app_with("wiki.md", 120, 40);
+    app.index_now();
+    frame(&mut app, 120, 40);
+
+    let index = app
+        .tab()
+        .doc
+        .as_ref()
+        .unwrap()
+        .links
+        .iter()
+        .position(|link| link.target == "Ambiguous")
+        .expect("the fixture has an ambiguous wiki-link");
+    app.update(Action::FollowHintedLink(index));
+
+    insta::assert_snapshot!(frame(&mut app, 120, 40));
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);

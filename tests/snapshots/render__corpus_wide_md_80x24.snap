@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga wide.md                                                             1/15
 ┌──────────────────────────────┐┌──────────────────────────────────────────────┐
 │FILES search outline links    ││# Wide content                                │
-│30 entries                    ││                                              │
+│31 entries                    ││                                              │
 │▸ .github                     ││A fenced code block with a line far wider     │
 │▸ docs                        ││than any terminal:                            │
 │▸ spaces and #hash            ││                                              │
@@ -23,6 +23,6 @@ expression: "frame(&mut app, width, height)"
 │  README.md                   ││                                              │
 │  unicode.md                  ││                                              │
 │● wide.md                     ││                                              │
-│                              ││                                              │
+│  wiki.md                     ││                                              │
 └──────────────────────────────┘└──────────────────────────────────────────────┘
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

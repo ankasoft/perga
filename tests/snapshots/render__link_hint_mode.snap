@@ -5,7 +5,7 @@ expression: "frame(&mut app, 120, 40)"
  perga README.md                                                                                                   1/22
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Fixture Vault                                                                       │
-│30 entries                    ││                                                                                      │
+│31 entries                    ││                                                                                      │
 │▸ .github                     ││A corpus for perga's tests. Every Markdown feature perga renders appears somewhere    │
 │▸ docs                        ││below or in one of the linked documents.                                              │
 │▸ spaces and #hash            ││                                                                                      │
@@ -23,7 +23,7 @@ expression: "frame(&mut app, 120, 40)"
 │● README.md                   ││[image: a diagram of the pipeline]                                                    │
 │  unicode.md                  ││                                                                                      │
 │  wide.md                     ││## Raw HTML                                                                           │
-│                              ││                                                                                      │
+│  wiki.md                     ││                                                                                      │
 │                              ││<div class="callout">Raw HTML renders as literal text.</div>                          │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

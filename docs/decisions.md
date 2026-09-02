@@ -502,3 +502,57 @@ folding character by character.
 An incremental search that jumps back to the first match on every keystroke
 fights the reader as they narrow a query. After a refresh the current match
 becomes the nearest one at or after where they already were.
+
+## M7 — Wiki-links and backlinks
+
+### D51: wiki-links are scanned for, not parsed
+
+`[[Page]]` is not Markdown, and `pulldown-cmark` sees it as a paragraph
+containing brackets. Reconstructing the pairs from its event stream is less
+reliable than reading the source, so extraction is two passes over the same
+text: the parser for Markdown links, and a scanner for wiki-links. The first
+pass also collects the ranges that hold code, raw HTML, and frontmatter, which
+is what keeps a `[[Page]]` written inside a fenced block from becoming a link.
+
+### D52: `![[Page]]` links rather than embeds
+
+Some tools read the bang prefix as "transclude this page here". perga does not
+embed, and a link to the page is the honest fallback — silently dropping the
+syntax would lose the reference altogether.
+
+### D53: the index knows files, and backlinks are computed from them
+
+The cache stores what each file *contains*, not a pre-computed backlink map.
+Backlinks are derived on demand by resolving every indexed link through the
+same resolver the reader's `Enter` uses, so a forward link and a backlink can
+never disagree. A vault where that becomes too slow to do per frame wants a
+memoised reverse map; at 10,000 files it does not.
+
+### D54: an exact-case filename match beats a case-insensitive one outright
+
+Section 9.6 lists them as separate steps, which means a vault holding both
+`Setup.md` and `setup.md` is not ambiguous when the link says which. Only when
+no exact-case candidate exists does the case-insensitive set become the answer,
+and then all of it does — including, correctly, an ambiguity between two files
+that differ only in case.
+
+### D55: following a wiki-link before the index is ready waits
+
+Resolving against a half-built index would send the reader to an arbitrary
+page — or report a page as missing that is about to be found — and look like a
+bug in their own notes. Until the index is ready the status bar says
+`Still indexing…`, and the links sidebar shows the progress behind that.
+
+### D56: `Token Rotation.md` in the fixture vault
+
+The resolution order in Section 9.6 has no step that turns a page name's spaces
+into hyphens, so `[[Token Rotation]]` resolves to a file named `Token
+Rotation.md` and not to `token-rotation.md`. The fixture was renamed to match
+what the specification actually says rather than an extra normalisation step
+being added to make the old name work.
+
+### D57: the picker widget is shared
+
+The disambiguation overlay and the quick switcher of Section 9.7 are the same
+shape — a title, a list, one selected row — so they share `ui::overlay::switcher`
+rather than growing two implementations that drift apart.

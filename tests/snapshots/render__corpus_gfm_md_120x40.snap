@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga gfm.md                                                                                                      1/43
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────█
 │FILES search outline links    ││# GFM features                                                                        █
-│30 entries                    ││                                                                                      █
+│31 entries                    ││                                                                                      █
 │▸ .github                     ││## A table with mixed alignment                                                       █
 │▸ docs                        ││                                                                                      █
 │▸ spaces and #hash            ││┌─────────────┬────────┬───────┐                                                      █
@@ -23,7 +23,7 @@ expression: "frame(&mut app, width, height)"
 │  README.md                   ││## Deeply nested lists                                                                █
 │  unicode.md                  ││                                                                                      █
 │  wide.md                     ││- one                                                                                 █
-│                              ││    - two                                                                             █
+│  wiki.md                     ││    - two                                                                             █
 │                              ││        - three                                                                       █
 │                              ││            - four                                                                    █
 │                              ││                - five                                                                █

@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga wide.md                                                                                                     1/14
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Wide content                                                                        │
-│30 entries                    ││                                                                                      │
+│31 entries                    ││                                                                                      │
 │▸ .github                     ││A fenced code block with a line far wider than any terminal:                          │
 │▸ docs                        ││                                                                                      │
 │▸ spaces and #hash            ││aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…│
@@ -23,7 +23,7 @@ expression: "frame(&mut app, width, height)"
 │  README.md                   ││                                                                                      │
 │  unicode.md                  ││                                                                                      │
 │● wide.md                     ││                                                                                      │
-│                              ││                                                                                      │
+│  wiki.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

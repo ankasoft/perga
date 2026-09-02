@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga broken-links.md                                                                                              1/4
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││# Broken links                                                                        │
-│30 entries                    ││                                                                                      │
+│31 entries                    ││                                                                                      │
 │▸ .github                     ││a missing file and a [[Missing Page]].                                                │
 │▸ docs                        ││                                                                                      │
 │▸ spaces and #hash            ││                                                                                      │
@@ -23,7 +23,7 @@ expression: "frame(&mut app, width, height)"
 │  README.md                   ││                                                                                      │
 │  unicode.md                  ││                                                                                      │
 │  wide.md                     ││                                                                                      │
-│                              ││                                                                                      │
+│  wiki.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

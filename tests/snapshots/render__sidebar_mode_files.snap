@@ -5,7 +5,7 @@ expression: "frame(&mut app, 120, 40)"
  perga
 ┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
 │FILES search outline links    ││                                                                                      │
-│30 entries                    ││                                                                                      │
+│31 entries                    ││                                                                                      │
 │▸ .github                     ││                                                                                      │
 │▸ docs                        ││                                                                                      │
 │▸ spaces and #hash            ││                                                                                      │
@@ -23,7 +23,7 @@ expression: "frame(&mut app, 120, 40)"
 │  README.md                   ││                                Ctrl+O   find a document                              │
 │  unicode.md                  ││                                 Ctrl+B   toggle sidebar                              │
 │  wide.md                     ││                                     ?   all keybindings                              │
-│                              ││                                                                                      │
+│  wiki.md                     ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

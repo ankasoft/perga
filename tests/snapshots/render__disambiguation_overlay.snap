@@ -1,0 +1,44 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, 120, 40)"
+---
+ perga wiki.md                                                                                                     1/10
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│FILES search outline links    ││# Wiki-links                                                                          │
+│31 entries                    ││                                                                                      │
+│▸ .github  ┌ [[Ambiguous]] matches 2 pages ───────────────────────────────────────────────────────────────┐ at a      │
+│▸ docs     │ docs/api/ambiguous.md                                                                        │on]], and  │
+│▸ spaces an│ docs/guides/ambiguous.md                                                                     │           │
+│  anchors.m│                                                                                              │           │
+│  broken-li│                                                                                              │           │
+│  crlf.md  │                                                                                              │           │
+│  cycle-a.m│                                                                                              │           │
+│  cycle-b.m│                                                                                              │           │
+│  empty.md │                                                                                              │           │
+│  frontmatt│                                                                                              │           │
+│  gfm.md   │                                                                                              │           │
+│  invalid-u│                                                                                              │           │
+│  no-traili│                                                                                              │           │
+│  outside.m│                                                                                              │           │
+│  README.md│                                                                                              │           │
+│  unicode.m│                                                                                              │           │
+│  wide.md  │                                                                                              │           │
+│● wiki.md  │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │                                                                                              │           │
+│           │ Enter open   Esc cancel                                                                      │           │
+│           └──────────────────────────────────────────────────────────────────────────────────────────────┘           │
+│                              ││                                                                                      │
+│                              ││                                                                                      │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help

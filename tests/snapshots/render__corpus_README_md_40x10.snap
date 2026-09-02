@@ -6,7 +6,7 @@ expression: "frame(&mut app, width, height)"
 ┌──────────────────┐───────────────────█
 │FILES search      │                   █
 │outline links     │                   ║
-│30 entries        │s tests. Every     ║
+│31 entries        │s tests. Every     ║
 │  outside.md      │rga renders appears║
 │● README.md       │ in one of the     ║
 │  unicode.md      │                   ║

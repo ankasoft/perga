@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga unicode.md                                                          1/16
 ┌──────────────────────────────┐┌──────────────────────────────────────────────┐
 │FILES search outline links    ││# Unicode                                     │
-│30 entries                    ││                                              │
+│31 entries                    ││                                              │
 │▸ .github                     ││## Kurulum Kılavuzu                           │
 │▸ docs                        ││                                              │
 │▸ spaces and #hash            ││Türkçe metin: ölçüm, şema, İstanbul, ığdır.   │
@@ -23,6 +23,6 @@ expression: "frame(&mut app, width, height)"
 │  README.md                   ││                                              │
 │● unicode.md                  ││                                              │
 │  wide.md                     ││                                              │
-│                              ││                                              │
+│  wiki.md                     ││                                              │
 └──────────────────────────────┘└──────────────────────────────────────────────┘
  READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find

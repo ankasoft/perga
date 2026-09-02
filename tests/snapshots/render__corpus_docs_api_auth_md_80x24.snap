@@ -5,7 +5,7 @@ expression: "frame(&mut app, width, height)"
  perga docs/api/auth.md                                                    1/13
 ┌──────────────────────────────┐┌──────────────────────────────────────────────┐
 │FILES search outline links    ││# Authentication                              │
-│30 entries                    ││                                              │
+│31 entries                    ││                                              │
 │▸ .github                     ││This service uses Bearer tokens. See setup    │
 │▾ docs                        ││for the full walkthrough, and [[Token Rotation│
 │  ▾ api                       ││]] for the rotation policy.                   │
