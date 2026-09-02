@@ -5,12 +5,17 @@
 //! terminal lives in [`run`], and it does nothing but translate messages into
 //! actions and hand them to [`App::update`].
 
+use std::path::{Path, PathBuf};
+
 use crossbeam_channel::Receiver;
 use ratatui::layout::Rect;
 
 use crate::action::Action;
 use crate::config::keymap::Keymap;
 use crate::config::schema::UiConfig;
+use crate::doc::document::Document;
+use crate::doc::highlight::Highlighter;
+use crate::doc::render::{RenderedDocument, Renderer};
 use crate::terminal::{self, Tui};
 use crate::theme::Theme;
 use crate::ui;
@@ -50,18 +55,47 @@ impl TabMode {
 }
 
 /// One tab: a document, its history, and its own scroll and find state.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Tab {
+    /// The open document. `None` shows the welcome screen.
+    pub doc: Option<Document>,
+    /// The document's layout at the current width.
+    pub layout: RenderedDocument,
+    /// Rendered line offset. Not a `u16`: a 100,000-line document overflows it.
+    pub scroll: usize,
+    /// Horizontal offset, for clipped code blocks and wide tables.
+    pub hscroll: u16,
     /// Read or edit.
     pub mode: TabMode,
 }
 
 impl Tab {
+    /// A tab showing this document.
+    pub fn with_document(doc: Document) -> Self {
+        Tab {
+            doc: Some(doc),
+            ..Tab::default()
+        }
+    }
+
     /// The label shown in the tab bar.
     ///
     /// A tab with no document open shows the welcome screen.
     pub fn label(&self) -> &str {
-        "welcome"
+        match &self.doc {
+            Some(doc) => doc.label(),
+            None => "welcome",
+        }
+    }
+
+    /// The furthest the viewport may scroll, keeping one screen in view.
+    ///
+    /// `None` while the document has not been fully measured, in which case
+    /// scrolling is not clamped and the scrollbar shows as indeterminate.
+    fn max_scroll(&self, height: u16) -> Option<usize> {
+        let doc = self.doc.as_ref()?;
+        let total = self.layout.total_lines(doc)?;
+        Some(total.saturating_sub(usize::from(height).max(1)))
     }
 }
 
@@ -120,8 +154,12 @@ pub enum Overlay {
 
 /// The whole application state.
 pub struct App {
+    /// The directory paths in the title bar and the tree are relative to.
+    pub vault_root: PathBuf,
     /// The resolved theme. Nothing in the UI hardcodes a colour.
     pub theme: Theme,
+    /// Syntax highlighting, which loads on a background thread.
+    pub highlighter: Highlighter,
     /// The resolved keymap, and the source of the help overlay.
     pub keymap: Keymap,
     /// Presentation settings.
@@ -169,7 +207,9 @@ impl App {
         }
 
         App {
+            vault_root: PathBuf::from("."),
             theme,
+            highlighter: Highlighter::new(),
             keymap,
             ui,
             tabs: vec![Tab::default()],
@@ -189,6 +229,52 @@ impl App {
     /// The active tab.
     pub fn tab(&self) -> &Tab {
         &self.tabs[self.active_tab]
+    }
+
+    /// The active document's path, relative to the vault root.
+    pub fn title_path(&self) -> Option<String> {
+        self.tab()
+            .doc
+            .as_ref()
+            .map(|doc| doc.display_path(&self.vault_root))
+    }
+
+    /// The scroll position, as `current/total`, once the total is known.
+    pub fn scroll_position(&self) -> Option<(usize, usize)> {
+        let tab = self.tab();
+        let doc = tab.doc.as_ref()?;
+        let total = tab.layout.total_lines(doc)?;
+        Some((tab.scroll.saturating_add(1).min(total.max(1)), total))
+    }
+
+    /// Point the vault root at a directory.
+    pub fn set_vault_root(&mut self, root: impl AsRef<Path>) {
+        self.vault_root = root.as_ref().to_path_buf();
+    }
+
+    /// A renderer for the current theme at a given content width.
+    pub fn renderer(&self, width: u16) -> Renderer {
+        Renderer::new(&self.theme, self.highlighter.clone(), width)
+    }
+
+    /// The content area of the viewport, inside its border.
+    pub fn viewport_inner(&self) -> Rect {
+        let viewport = self.frames().viewport;
+        Rect {
+            x: viewport.x.saturating_add(1),
+            y: viewport.y.saturating_add(1),
+            width: viewport.width.saturating_sub(2),
+            height: viewport.height.saturating_sub(2),
+        }
+    }
+
+    /// Open a document in the active tab.
+    pub fn open(&mut self, doc: Document) {
+        if let Some(reason) = doc.read_only {
+            self.status.set(reason.message(), Severity::Warning);
+        }
+        let tab = &mut self.tabs[self.active_tab];
+        *tab = Tab::with_document(doc);
     }
 
     /// The layout for the current state and terminal size.
@@ -242,9 +328,124 @@ impl App {
             Action::ToggleMouse => self.toggle_mouse(),
             Action::ToggleHelp => self.toggle_help(),
             Action::Escape => self.escape(),
+            Action::SyntaxReady => self.status.clear(),
+
+            // -- Viewport scrolling --------------------------------------
+            Action::ScrollLineDown => self.scroll_by(1),
+            Action::ScrollLineUp => self.scroll_by(-1),
+            Action::ScrollHalfPageDown => self.scroll_by(i64::from(self.page() / 2).max(1)),
+            Action::ScrollHalfPageUp => self.scroll_by(-i64::from(self.page() / 2).max(1)),
+            Action::ScrollPageDown => self.scroll_by(i64::from(self.page()).max(1)),
+            Action::ScrollPageUp => self.scroll_by(-i64::from(self.page()).max(1)),
+            Action::ScrollWheelDown => {
+                self.scroll_by(i64::from(self.ui.mouse_scroll_lines).max(1));
+            }
+            Action::ScrollWheelUp => {
+                self.scroll_by(-i64::from(self.ui.mouse_scroll_lines).max(1));
+            }
+            Action::ScrollTop => self.scroll_to_top(),
+            Action::ScrollBottom => self.scroll_to_bottom(),
+            Action::ScrollLeft => self.scroll_horizontally(-1),
+            Action::ScrollRight => self.scroll_horizontally(1),
+            Action::PrevHeading => self.scroll_to_heading(false),
+            Action::NextHeading => self.scroll_to_heading(true),
 
             // Actions whose handlers arrive with the features that need them.
             _ => {}
+        }
+    }
+
+    /// The viewport's height in rendered lines.
+    fn page(&self) -> u16 {
+        self.viewport_inner().height.max(1)
+    }
+
+    /// Scroll the active tab by a signed number of lines.
+    fn scroll_by(&mut self, delta: i64) {
+        let height = self.page();
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+
+        let wanted = (tab.scroll as i64 + delta).max(0) as usize;
+
+        // Scrolling down past what has been measured is what triggers the next
+        // chunk of measurement; scrolling up never needs any.
+        if delta > 0 {
+            tab.layout.window(doc, &renderer, wanted, height);
+        }
+
+        tab.scroll = match tab.max_scroll(height) {
+            Some(max) => wanted.min(max),
+            // Not fully measured yet: allow the move, and the clamp lands once
+            // the total is known rather than blocking the scroll now.
+            None => wanted.min(tab.layout.measured_lines()),
+        };
+    }
+
+    /// Jump to the top of the document.
+    fn scroll_to_top(&mut self) {
+        self.tabs[self.active_tab].scroll = 0;
+    }
+
+    /// Jump to the bottom, measuring the rest of the document to find it.
+    fn scroll_to_bottom(&mut self) {
+        let height = self.page();
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+
+        // Measured in chunks, so a jump to the end of a very large document
+        // costs several frames rather than one long freeze.
+        if !tab.layout.resolve_all(doc, &renderer) {
+            self.status.set("Measuring the document…", Severity::Info);
+        }
+
+        if let Some(max) = tab.max_scroll(height) {
+            tab.scroll = max;
+        } else {
+            tab.scroll = tab.layout.measured_lines();
+        }
+    }
+
+    /// Scroll a clipped code block or wide table sideways.
+    fn scroll_horizontally(&mut self, delta: i16) {
+        let tab = &mut self.tabs[self.active_tab];
+        if tab.doc.is_none() {
+            return;
+        }
+        tab.hscroll =
+            (i32::from(tab.hscroll) + i32::from(delta)).clamp(0, i32::from(u16::MAX)) as u16;
+    }
+
+    /// Scroll to the next or previous heading.
+    fn scroll_to_heading(&mut self, forward: bool) {
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+
+        let offsets: Vec<usize> = doc.outline.iter().map(|h| h.offset).collect();
+        let current = tab.scroll;
+
+        let mut target = None;
+        for offset in offsets {
+            let Some(line) = tab.layout.line_of_offset(doc, &renderer, offset) else {
+                continue;
+            };
+            if forward && line > current {
+                target = Some(line);
+                break;
+            }
+            if !forward && line < current {
+                target = Some(line);
+            }
+        }
+
+        if let Some(line) = target {
+            tab.scroll = line;
         }
     }
 
@@ -354,6 +555,8 @@ pub enum Message {
     Input(crossterm::event::Event),
     /// A signal was delivered. The payload is the `libc` signal number.
     Signal(i32),
+    /// Syntax highlighting finished loading.
+    SyntaxReady,
 }
 
 /// Run the application until it quits.
@@ -367,7 +570,7 @@ pub fn run(terminal: &mut Tui, app: &mut App, messages: &Receiver<Message>) -> a
     app.update(Action::Resize(size.width, size.height));
 
     loop {
-        terminal.draw(|frame| ui::render(app, frame))?;
+        terminal.draw(|frame| ui::draw(app, frame))?;
 
         let Ok(message) = messages.recv() else {
             // Every sender is gone, which can only happen during teardown.

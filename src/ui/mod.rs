@@ -29,8 +29,21 @@ use crate::ui::viewport::Viewport;
 const OVERLAY_WIDTH_PERCENT: u16 = 80;
 const OVERLAY_HEIGHT_PERCENT: u16 = 80;
 
-/// Draw one frame.
+/// Measure whatever the next frame needs, then draw it.
+///
+/// Measuring mutates the layout cache, so it happens here rather than inside
+/// `render`, which stays a pure function of state.
+pub fn draw(app: &mut App, frame: &mut Frame) {
+    let (lines, total) = viewport::measure(app);
+    render_with(app, frame, &lines, total);
+}
+
+/// Draw one frame from state alone.
 pub fn render(app: &App, frame: &mut Frame) {
+    render_with(app, frame, &[], None);
+}
+
+fn render_with(app: &App, frame: &mut Frame, lines: &[Line<'static>], total: Option<usize>) {
     let area = frame.area();
     let buf = frame.buffer_mut();
     let frames = app.frames();
@@ -52,7 +65,7 @@ pub fn render(app: &App, frame: &mut Frame) {
         TabBar::new(app).render(tabs, buf);
     }
 
-    Viewport::new(app).render(frames.viewport, buf);
+    Viewport::new(app, lines, total).render(frames.viewport, buf);
 
     if let Some(sidebar) = frames.sidebar {
         let overlaid = frames.sidebar_placement == SidebarPlacement::Overlaid;
@@ -76,12 +89,26 @@ pub fn render(app: &App, frame: &mut Frame) {
 fn render_title(app: &App, area: Rect, buf: &mut ratatui::buffer::Buffer) {
     let theme = &app.theme;
 
-    Paragraph::new(Line::from(vec![
+    let left = Line::from(vec![
         Span::styled(" perga ", theme.ui.title),
-        Span::styled("", theme.ui.status_bar),
-    ]))
-    .style(theme.ui.status_bar)
-    .render(area, buf);
+        Span::styled(app.title_path().unwrap_or_default(), theme.ui.logo_subtitle),
+    ]);
+
+    Paragraph::new(left)
+        .style(theme.ui.status_bar)
+        .render(area, buf);
+
+    // The scroll position is only shown once the document has been measured to
+    // the end; a total that jumps as it is discovered is worse than no total.
+    if let Some((current, total)) = app.scroll_position() {
+        Paragraph::new(Line::from(Span::styled(
+            format!("{current}/{total} "),
+            theme.ui.logo_subtitle,
+        )))
+        .alignment(Alignment::Right)
+        .style(theme.ui.status_bar)
+        .render(area, buf);
+    }
 }
 
 /// Below the minimum supported size there is no honest way to draw a frame, so

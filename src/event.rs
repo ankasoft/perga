@@ -22,6 +22,7 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
     match message {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
+        Message::SyntaxReady => vec![Action::SyntaxReady],
     }
 }
 

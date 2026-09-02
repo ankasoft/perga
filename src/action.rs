@@ -23,6 +23,9 @@ pub enum Action {
     Suspend,
     /// The terminal was resized to these dimensions.
     Resize(u16, u16),
+    /// The background thread finished loading the syntax sets, so code blocks
+    /// drawn plain can be drawn highlighted.
+    SyntaxReady,
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.
