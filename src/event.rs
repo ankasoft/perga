@@ -18,6 +18,7 @@ use crate::ui::hints;
 use crate::ui::overlay::prompt::TextEdit;
 use crate::vault::index::IndexEvent;
 use crate::vault::walker::WalkEvent;
+use crate::vault::watch::WatchEvent;
 
 /// Translate one message into the actions it produces.
 ///
@@ -28,6 +29,11 @@ pub fn translate(app: &mut App, message: Message) -> Vec<Action> {
         Message::Input(event) => translate_input(app, event),
         Message::Signal(signal) => translate_signal(signal),
         Message::SyntaxReady => vec![Action::SyntaxReady],
+        Message::Watch(event) => vec![match event {
+            WatchEvent::Changed(paths) => Action::FilesChanged(paths),
+            WatchEvent::Removed(paths) => Action::FilesRemoved(paths),
+            WatchEvent::Stopped(reason) => Action::WatchStopped(reason),
+        }],
         Message::Search(event) => vec![match event {
             SearchEvent::Hits(hits) => Action::SearchHits(hits),
             SearchEvent::Finished { total, truncated } => {
@@ -56,6 +62,11 @@ fn translate_input(app: &mut App, event: CtEvent) -> Vec<Action> {
             MouseEventKind::ScrollUp => vec![Action::ScrollWheelUp],
             _ => Vec::new(),
         },
+        // A bracketed paste is one edit, not one per character: 5,000 lines
+        // pasted must be a single undo step.
+        CtEvent::Paste(text) if app.tab().mode == TabMode::Edit => {
+            vec![Action::EditPaste(text)]
+        }
         // Focus changes and pastes outside edit mode are not interesting.
         _ => Vec::new(),
     }
@@ -99,6 +110,13 @@ fn translate_key(app: &mut App, key: KeyEvent) -> Vec<Action> {
         }
         Resolution::Unbound => {
             app.status.pending = None;
+
+            // Section 12: in edit mode the text area owns every key the Edit
+            // context did not claim. Outside it, an unbound key does nothing.
+            if context == KeyContext::Edit {
+                return vec![Action::EditInput(key)];
+            }
+
             Vec::new()
         }
     }
@@ -245,6 +263,19 @@ fn translate_overlay_key(app: &mut App, chord: KeyChord) -> Vec<Action> {
             _ => Vec::new(),
         },
         Overlay::Find => translate_find_key(chord),
+        Overlay::Confirm { choices, .. } => match chord.code {
+            KeyCode::Esc => vec![Action::Escape],
+            // Only the keys the dialog offered do anything; a stray press is
+            // swallowed rather than being taken as an answer.
+            KeyCode::Char(c)
+                if choices
+                    .iter()
+                    .any(|(key, _)| *key == c.to_ascii_lowercase()) =>
+            {
+                vec![Action::Confirm(c.to_ascii_lowercase())]
+            }
+            _ => Vec::new(),
+        },
         Overlay::Prompt { .. } => translate_line_key(
             chord,
             Action::PromptEdit,

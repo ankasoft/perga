@@ -87,6 +87,13 @@ impl Widget for Viewport<'_> {
             return;
         };
 
+        // Edit mode draws the buffer, not the rendered document: the reader is
+        // looking at the source, and the scrollbar belongs to the text area.
+        if let Some(editor) = &tab.editor {
+            (&editor.textarea).render(inner, buf);
+            return;
+        }
+
         let focused_link = self.focused_link_placement();
         let query = tab.find.as_ref().map(|find| find.query()).unwrap_or("");
 

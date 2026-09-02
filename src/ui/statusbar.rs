@@ -6,7 +6,7 @@ use ratatui::widgets::{Paragraph, Widget};
 use unicode_width::UnicodeWidthStr;
 
 use crate::action::Action;
-use crate::app::{App, Severity};
+use crate::app::{App, Severity, DIRTY_MARKER};
 
 /// The actions the standing hint row advertises, in the order they are dropped
 /// from the right as the terminal narrows.
@@ -50,6 +50,21 @@ impl<'a> StatusBar<'a> {
             ),
             Span::styled(" ", theme.ui.status_bar),
         ];
+
+        // In edit mode the dirty marker and the cursor position replace the
+        // hints: they are what the writer needs to see, and they change with
+        // every keystroke.
+        if let Some(editor) = &self.app.tab().editor {
+            let (line, column) = editor.cursor();
+
+            if self.app.tab().dirty {
+                spans.push(Span::styled(format!("{DIRTY_MARKER} "), theme.tabs.dirty));
+            }
+            spans.push(Span::styled(
+                format!("{}:{}  ", line + 1, column + 1),
+                theme.ui.status_bar,
+            ));
+        }
 
         // Priority, highest first: a message the user needs to see, then the
         // sequence they are halfway through typing, then the standing hints.

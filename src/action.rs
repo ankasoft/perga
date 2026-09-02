@@ -44,6 +44,12 @@ pub enum Action {
     IndexBatch(Vec<(PathBuf, FileEntry)>),
     /// The backlink index is complete.
     IndexFinished,
+    /// These paths changed on disk, relative to the vault root.
+    FilesChanged(Vec<PathBuf>),
+    /// These paths are gone.
+    FilesRemoved(Vec<PathBuf>),
+    /// Watching had to be given up.
+    WatchStopped(String),
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.
@@ -103,6 +109,8 @@ pub enum Action {
     FollowHintedLink(usize),
     /// Open the candidate a disambiguation overlay selected. Not bindable.
     ChooseCandidate(usize),
+    /// Answer the open confirmation. Not bindable.
+    Confirm(char),
     /// Go back in this tab's history.
     HistoryBack,
     /// Go forward in this tab's history.
@@ -201,6 +209,10 @@ pub enum Action {
     // -- Editing -----------------------------------------------------------
     /// Write the active buffer to disk.
     Save,
+    /// A key press the text area should handle. Not bindable.
+    EditInput(crossterm::event::KeyEvent),
+    /// Text pasted into the buffer, applied as a single undo step.
+    EditPaste(String),
     /// Undo the last edit.
     Undo,
     /// Redo the last undone edit.

@@ -259,6 +259,11 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
         let _ = search_tx.send(Message::Search(event));
     });
 
+    let watch_tx = tx.clone();
+    app.start_watch(move |event| {
+        let _ = watch_tx.send(Message::Watch(event));
+    });
+
     #[cfg(unix)]
     spawn_signal_thread(tx.clone());
 

@@ -7,17 +7,21 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use crossbeam_channel::Receiver;
 use ratatui::layout::Rect;
 
 use crate::action::Action;
 use crate::config::keymap::Keymap;
-use crate::config::schema::{FilesConfig, GeneralConfig, SearchConfig, UiConfig, WikiLinkConfig};
+use crate::config::schema::{
+    EditorConfig, FilesConfig, GeneralConfig, SearchConfig, UiConfig, WatchConfig, WikiLinkConfig,
+};
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
 use crate::doc::links;
 use crate::doc::render::{RenderedDocument, Renderer};
+use crate::editor::buffer::{self, EditorState, SaveError};
 use crate::search::content::{self, SearchEvent, SearchHandle};
 use crate::search::in_doc::FindState;
 use crate::search::SearchState;
@@ -29,6 +33,7 @@ use crate::ui::overlay::prompt::{TextEdit, TextInput};
 use crate::ui::sidebar::SidebarMode;
 use crate::vault::index::{self, IndexEvent, WikiResolution};
 use crate::vault::walker::{WalkEvent, WalkOptions};
+use crate::vault::watch::WatchEvent;
 use crate::vault::Vault;
 
 /// Which pane has focus.
@@ -147,6 +152,8 @@ pub struct Tab {
     /// This tab's find state, kept when the bar closes so `Ctrl+F` reopens
     /// where the reader left off.
     pub find: Option<FindState>,
+    /// The edit buffer, while this tab is in edit mode.
+    pub editor: Option<EditorState>,
     /// Whether the buffer has edits that are not on disk.
     ///
     /// Owned by the tab rather than by the editor so that the tab bar and the
@@ -212,6 +219,18 @@ pub const MAX_TAB_LABEL: usize = 20;
 
 /// Marks a tab whose buffer has unsaved edits.
 pub const DIRTY_MARKER: &str = "●";
+
+/// The byte offset a zero-based source line begins at.
+fn offset_of_source_line(source: &str, line: usize) -> usize {
+    if line == 0 {
+        return 0;
+    }
+
+    source
+        .match_indices('\n')
+        .nth(line - 1)
+        .map_or(source.len(), |(at, _)| at + 1)
+}
 
 /// Give a typed path a Markdown extension when it has none.
 fn with_markdown_extension(query: &str, files: &FilesConfig) -> String {
@@ -357,6 +376,15 @@ pub enum Overlay {
         /// Which row is selected.
         selected: usize,
     },
+    /// A yes/no/cancel question.
+    Confirm {
+        /// What is being asked.
+        question: String,
+        /// The choices, as `(key, label)`.
+        choices: Vec<(char, String)>,
+        /// What confirming will do.
+        action: ConfirmAction,
+    },
     /// Link hint mode: every visible link wears a label.
     Hints {
         /// The links wearing labels, in reading order.
@@ -366,11 +394,38 @@ pub enum Overlay {
     },
 }
 
+/// What a confirmation is about.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfirmAction {
+    /// Leaving edit mode with unsaved edits.
+    LeaveEditMode,
+    /// Quitting with unsaved edits in some tab.
+    Quit,
+    /// Saving over a file that changed on disk since it was loaded.
+    OverwriteChanged,
+    /// Creating the page a broken wiki-link named.
+    CreatePage {
+        /// Where it would be created.
+        path: PathBuf,
+    },
+    /// Restoring unsaved text left behind by an earlier run.
+    RestoreRecovery {
+        /// The document the text belongs to.
+        path: PathBuf,
+    },
+}
+
 /// What a prompt will do with what is typed into it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PromptKind {
     /// Run a project-wide search.
     ProjectSearch,
+    /// Create a file at the path typed.
+    NewFile,
+    /// Rename the active document.
+    RenameDocument,
+    /// Rename the entry the tree has selected.
+    RenameTreeEntry,
 }
 
 impl PromptKind {
@@ -378,6 +433,8 @@ impl PromptKind {
     pub fn prefix(self) -> &'static str {
         match self {
             PromptKind::ProjectSearch => "search: ",
+            PromptKind::NewFile => "new file: ",
+            PromptKind::RenameDocument | PromptKind::RenameTreeEntry => "rename to: ",
         }
     }
 }
@@ -405,6 +462,16 @@ pub struct App {
     pub wikilinks: WikiLinkConfig,
     /// The `[search]` table.
     pub search_config: SearchConfig,
+    /// The `[editor]` table.
+    pub editor_config: EditorConfig,
+    /// Writes perga made, so the watcher does not report them back.
+    pub own_writes: crate::vault::watch::OwnWrites,
+    /// Set when the active document should be handed to `$EDITOR`.
+    pub external_edit: Option<PathBuf>,
+    /// The `[watch]` table.
+    pub watch_config: WatchConfig,
+    /// The running watch. Dropping it stops watching.
+    watch: Option<crate::vault::watch::WatchHandle>,
     /// The last project-wide search.
     pub search: SearchState,
     /// Documents opened this session, most recent first.
@@ -480,6 +547,11 @@ impl App {
             general: GeneralConfig::default(),
             wikilinks: WikiLinkConfig::default(),
             search_config: SearchConfig::default(),
+            editor_config: EditorConfig::default(),
+            own_writes: crate::vault::watch::OwnWrites::default(),
+            external_edit: None,
+            watch_config: WatchConfig::default(),
+            watch: None,
             search: SearchState::default(),
             recent: Vec::new(),
             search_handle: None,
@@ -620,8 +692,11 @@ impl App {
 
         match action {
             // -- Lifecycle -----------------------------------------------
-            Action::Quit => self.should_quit = true,
+            Action::Quit => self.quit(),
             Action::ForceQuit(code) => {
+                // Section 13: a signal gives no chance to ask, so unsaved text
+                // is parked where the next run can offer it back.
+                self.write_recovery_files();
                 self.should_quit = true;
                 self.exit_code = code;
             }
@@ -697,6 +772,9 @@ impl App {
                 }
             }
             Action::IndexFinished => self.finish_indexing(),
+            Action::FilesChanged(paths) => self.files_changed(&paths),
+            Action::FilesRemoved(paths) => self.files_removed(&paths),
+            Action::WatchStopped(reason) => self.status.set(reason, Severity::Warning),
             Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
 
             // -- Sidebar ---------------------------------------------------
@@ -759,6 +837,19 @@ impl App {
             Action::SwitcherMove(delta) => self.move_switcher(delta),
             Action::SwitcherAccept { new_tab } => self.accept_switcher(new_tab),
 
+            // -- Editing ---------------------------------------------------
+            Action::EnterEditMode => self.enter_edit_mode(),
+            Action::EditInput(key) => self.edit_input(key),
+            Action::EditPaste(text) => self.edit_paste(&text),
+            Action::Save => self.save(false),
+            Action::Undo => self.edit_history(false),
+            Action::Redo => self.edit_history(true),
+            Action::ReloadDocument => self.reload_document(),
+            Action::NewFile => self.open_prompt(PromptKind::NewFile),
+            Action::RenameDocument => self.open_prompt(PromptKind::RenameDocument),
+            Action::TreeRename => self.open_prompt(PromptKind::RenameTreeEntry),
+            Action::OpenInExternalEditor => self.hand_to_external_editor(),
+
             // -- Find in document -------------------------------------------
             Action::OpenFindInDocument => self.open_find(),
             Action::FindEdit(edit) => self.edit_find(edit),
@@ -780,6 +871,7 @@ impl App {
             Action::HintMode => self.open_hint_mode(),
             Action::FollowHintedLink(index) => self.follow_link(index),
             Action::ChooseCandidate(index) => self.choose_candidate(index),
+            Action::Confirm(key) => self.confirm(key),
             Action::HistoryBack => self.navigate_history(false),
             Action::HistoryForward => self.navigate_history(true),
 
@@ -1248,6 +1340,610 @@ impl App {
             .collect()
     }
 
+    // -- Edit mode -----------------------------------------------------------
+
+    /// Enter edit mode on the active document.
+    ///
+    /// The cursor lands on the source line the reader was looking at, so
+    /// crossing the boundary does not lose their place.
+    fn enter_edit_mode(&mut self) {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+
+        if let Some(reason) = doc.read_only {
+            self.status.set(reason.message(), Severity::Warning);
+            return;
+        }
+
+        let line = self.source_line_at_scroll();
+        let mut editor = EditorState::new(doc);
+
+        editor
+            .textarea
+            .move_cursor(tui_textarea::CursorMove::Jump(line as u16, 0));
+
+        let index = self.active_tab;
+        self.tabs[index].editor = Some(editor);
+        self.tabs[index].mode = TabMode::Edit;
+        // Section 7.3: edit mode locks focus to the viewport.
+        self.focus = Focus::Viewport;
+
+        if let Some(text) = self.pending_recovery() {
+            let path = self.tab().doc.as_ref().map(|d| d.path.clone());
+            if let Some(path) = path {
+                self.overlay = Some(Overlay::Confirm {
+                    question: format!(
+                        "Unsaved text for {} was left behind. Restore it?",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    ),
+                    choices: vec![('y', "restore".into()), ('n', "discard".into())],
+                    action: ConfirmAction::RestoreRecovery { path },
+                });
+                self.focus = Focus::Overlay;
+                let _ = text;
+            }
+        }
+    }
+
+    /// Unsaved text an earlier run left behind for the active document.
+    fn pending_recovery(&self) -> Option<String> {
+        let doc = self.tab().doc.as_ref()?;
+        buffer::read_recovery(&self.vault.root, &doc.path)
+    }
+
+    /// The zero-based source line the top of the viewport is showing.
+    fn source_line_at_scroll(&self) -> usize {
+        let tab = self.tab();
+        let Some(doc) = tab.doc.as_ref() else {
+            return 0;
+        };
+
+        let Some(offset) = tab.layout.line_map().offset_of_line(tab.scroll) else {
+            return 0;
+        };
+
+        doc.source[..offset.min(doc.source.len())]
+            .matches('\n')
+            .count()
+    }
+
+    /// Leave edit mode, asking about unsaved edits first.
+    fn leave_edit_mode(&mut self) {
+        if self.tab().mode != TabMode::Edit {
+            return;
+        }
+
+        if self.tab().dirty {
+            self.overlay = Some(Overlay::Confirm {
+                question: "This document has unsaved edits.".to_string(),
+                choices: vec![
+                    ('s', "save".into()),
+                    ('d', "discard".into()),
+                    ('c', "cancel".into()),
+                ],
+                action: ConfirmAction::LeaveEditMode,
+            });
+            self.focus = Focus::Overlay;
+            return;
+        }
+
+        self.finish_edit_mode();
+    }
+
+    /// Drop the buffer and go back to reading, at the line the cursor was on.
+    fn finish_edit_mode(&mut self) {
+        let index = self.active_tab;
+        let cursor = self.tabs[index].editor.as_ref().map(|e| e.cursor().0);
+
+        self.tabs[index].editor = None;
+        self.tabs[index].mode = TabMode::Read;
+        self.tabs[index].dirty = false;
+        self.focus = Focus::Viewport;
+
+        if let Some(line) = cursor {
+            self.scroll_to_source_line(line);
+        }
+    }
+
+    /// Put the rendered view where a source line is.
+    fn scroll_to_source_line(&mut self, line: usize) {
+        let Some(offset) = self
+            .tab()
+            .doc
+            .as_ref()
+            .map(|doc| offset_of_source_line(&doc.source, line))
+        else {
+            return;
+        };
+
+        let renderer = self.renderer(self.viewport_inner().width);
+        let height = usize::from(self.page());
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+        let Some(rendered) = tab.layout.line_of_offset(doc, &renderer, offset) else {
+            return;
+        };
+
+        // Placed a third of the way down rather than at the very top: the
+        // reader was looking at the line, not at the line above it.
+        tab.scroll = rendered.saturating_sub(height / 3);
+    }
+
+    /// Hand a key press to the text area.
+    fn edit_input(&mut self, key: crossterm::event::KeyEvent) {
+        let index = self.active_tab;
+        let Some(editor) = &mut self.tabs[index].editor else {
+            return;
+        };
+
+        editor.textarea.input(key);
+        self.tabs[index].dirty = self.tabs[index]
+            .editor
+            .as_ref()
+            .is_some_and(EditorState::is_dirty);
+    }
+
+    /// Insert pasted text as a single undo step.
+    fn edit_paste(&mut self, text: &str) {
+        let index = self.active_tab;
+        let Some(editor) = &mut self.tabs[index].editor else {
+            return;
+        };
+
+        // One `insert_str` rather than a character at a time: 5,000 lines
+        // pasted must be one undo, not five thousand.
+        editor.textarea.insert_str(text);
+        self.tabs[index].dirty = self.tabs[index]
+            .editor
+            .as_ref()
+            .is_some_and(EditorState::is_dirty);
+    }
+
+    /// Undo or redo in the active buffer.
+    fn edit_history(&mut self, redo: bool) {
+        let index = self.active_tab;
+        let Some(editor) = &mut self.tabs[index].editor else {
+            return;
+        };
+
+        if redo {
+            editor.textarea.redo();
+        } else {
+            editor.textarea.undo();
+        }
+
+        self.tabs[index].dirty = self.tabs[index]
+            .editor
+            .as_ref()
+            .is_some_and(EditorState::is_dirty);
+    }
+
+    /// Write the active buffer to disk.
+    pub fn save(&mut self, force: bool) {
+        let index = self.active_tab;
+
+        let Some(editor) = &self.tabs[index].editor else {
+            return;
+        };
+        let Some(doc) = &self.tabs[index].doc else {
+            return;
+        };
+
+        let path = doc.path.clone();
+        let contents = editor.contents();
+        let expected = (!force).then_some(editor.known_mtime);
+
+        match buffer::save(&path, &contents, expected) {
+            Ok(mtime) => {
+                // Recorded before anything else: the watcher will report this
+                // write, and without the record it would reload the document
+                // on top of the buffer that produced it.
+                self.own_writes.record(path.clone(), mtime);
+
+                if let Some(editor) = &mut self.tabs[index].editor {
+                    editor.mark_saved(mtime);
+                }
+                self.tabs[index].dirty = false;
+
+                // The document is re-parsed so the outline, the links, and the
+                // rendered blocks all follow the text that was just written.
+                self.reload_from(&path, &contents, mtime);
+                buffer::clear_recovery(&self.vault.root, &path);
+
+                if let Some(relative) = self.vault.relative(&path).map(Path::to_path_buf) {
+                    self.reindex(&relative);
+                }
+
+                self.status.set("Saved", Severity::Info);
+            }
+            Err(SaveError::Conflict { .. }) => {
+                self.overlay = Some(Overlay::Confirm {
+                    question: format!(
+                        "{} changed on disk since it was opened.",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    ),
+                    choices: vec![
+                        ('o', "overwrite".into()),
+                        ('r', "reload and discard".into()),
+                        ('c', "cancel".into()),
+                    ],
+                    action: ConfirmAction::OverwriteChanged,
+                });
+                self.focus = Focus::Overlay;
+            }
+            Err(e) => self
+                .status
+                .set(format!("Cannot save: {e}"), Severity::Error),
+        }
+    }
+
+    /// Replace the active document with freshly parsed text.
+    fn reload_from(&mut self, path: &Path, source: &str, mtime: SystemTime) {
+        let index = self.active_tab;
+        let Some(doc) = &self.tabs[index].doc else {
+            return;
+        };
+
+        let parsed = Document::from_source(
+            path.to_path_buf(),
+            source.to_string(),
+            mtime,
+            doc.had_bom,
+            doc.read_only,
+        );
+
+        self.tabs[index].doc = Some(parsed);
+        // The layout keys its cache by content hash, so the blocks that did
+        // not change are still hits; only the edited ones re-render.
+        self.tabs[index].layout = RenderedDocument::new();
+    }
+
+    /// Re-read the active document from disk.
+    fn reload_document(&mut self) {
+        let Some(path) = self.tab().doc.as_ref().map(|doc| doc.path.clone()) else {
+            return;
+        };
+
+        if self.tab().dirty {
+            self.status.set(
+                "This document has unsaved edits; save or discard first",
+                Severity::Warning,
+            );
+            return;
+        }
+
+        let scroll = self.tab().scroll;
+
+        match Document::load(&path) {
+            Ok(document) => {
+                self.open(document);
+                // Reloading is not navigating: the reader stays where they
+                // were, as closely as the new text allows.
+                self.restore_scroll(scroll);
+                self.status.set("Reloaded", Severity::Info);
+            }
+            Err(e) => self.status.set(
+                format!("Cannot reload {}: {e}", path.display()),
+                Severity::Error,
+            ),
+        }
+    }
+
+    /// Ask the event loop to hand the active document to `$EDITOR`.
+    ///
+    /// The loop does the work, because putting the terminal back afterwards is
+    /// its job and `App` is deliberately terminal-free.
+    fn hand_to_external_editor(&mut self) {
+        let Some(path) = self.tab().doc.as_ref().map(|doc| doc.path.clone()) else {
+            return;
+        };
+
+        if self.tab().dirty {
+            self.status.set(
+                "Save or discard this buffer before handing it to $EDITOR",
+                Severity::Warning,
+            );
+            return;
+        }
+
+        if self.external_command().is_none() {
+            self.status.set(
+                "No editor: set $EDITOR or editor.external_command",
+                Severity::Error,
+            );
+            return;
+        }
+
+        self.external_edit = Some(path);
+    }
+
+    /// The command `o` runs, from configuration or the environment.
+    pub fn external_command(&self) -> Option<String> {
+        let configured = self.editor_config.external_command.trim();
+        if !configured.is_empty() {
+            return Some(configured.to_string());
+        }
+
+        std::env::var("EDITOR")
+            .ok()
+            .or_else(|| std::env::var("VISUAL").ok())
+            .filter(|command| !command.trim().is_empty())
+    }
+
+    // -- Creating and renaming ----------------------------------------------
+
+    /// Create a file at the path typed into the prompt.
+    fn create_file(&mut self, typed: &str) {
+        let relative_to = self
+            .active_path()
+            .and_then(|path| path.parent().map(Path::to_path_buf))
+            .map_or_else(|| self.vault.root.clone(), |dir| self.vault.absolute(&dir));
+
+        let resolved =
+            crate::editor::resolve_new_path(typed, &relative_to, &self.vault.root, &self.files);
+
+        let path = match resolved {
+            Ok(path) => path,
+            Err(e) => {
+                self.status.set(e.to_string(), Severity::Error);
+                return;
+            }
+        };
+
+        self.create_and_open(&path);
+    }
+
+    /// Create a file, open it in a new tab, and start editing it.
+    pub fn create_and_open(&mut self, path: &Path) {
+        let contents = if self.editor_config.new_file_frontmatter {
+            crate::editor::frontmatter_stub(path)
+        } else {
+            String::new()
+        };
+
+        if let Err(e) = crate::editor::create(path, &contents) {
+            self.status
+                .set(format!("Cannot create the file: {e}"), Severity::Error);
+            return;
+        }
+
+        match Document::load(path) {
+            Ok(document) => {
+                // A new note goes in its own tab: creating one is not the
+                // same as leaving whatever was being read. A tab showing the
+                // welcome screen is the exception — it is already empty.
+                let wants_tab = self.tab().doc.is_some();
+
+                if wants_tab && self.open_in_background_tab(document.clone()) {
+                    self.active_tab = self.tabs.len() - 1;
+                } else {
+                    self.open(document);
+                }
+
+                if let Some(relative) = self.vault.relative(path).map(Path::to_path_buf) {
+                    self.vault.tree.insert_all([crate::vault::walker::Entry {
+                        path: relative.clone(),
+                        is_dir: false,
+                        mtime: None,
+                        size: 0,
+                    }]);
+                    self.vault.markdown.push((relative.clone(), None, 0));
+                    self.reindex(&relative);
+                    self.vault.tree.reveal(&relative);
+                }
+
+                self.update(Action::EnterEditMode);
+                self.status
+                    .set(format!("Created {}", path.display()), Severity::Info);
+            }
+            Err(e) => self.status.set(
+                format!("Created but cannot open {}: {e}", path.display()),
+                Severity::Error,
+            ),
+        }
+    }
+
+    /// Rename a file, following every tab that had it open.
+    fn rename(&mut self, existing: &Path, typed: &str) {
+        let resolved = crate::editor::resolve_rename(typed, existing, &self.vault.root);
+
+        let target = match resolved {
+            Ok(path) => path,
+            Err(e) => {
+                self.status.set(e.to_string(), Severity::Error);
+                return;
+            }
+        };
+
+        if target == existing {
+            return;
+        }
+
+        if let Err(e) = std::fs::rename(existing, &target) {
+            self.status
+                .set(format!("Cannot rename: {e}"), Severity::Error);
+            return;
+        }
+
+        // Every tab pointing at the old path follows it, so a rename does not
+        // leave a tab reading a file that is no longer there.
+        let mut followed = 0;
+        for tab in &mut self.tabs {
+            if let Some(doc) = &mut tab.doc {
+                if doc.path == existing {
+                    doc.path = target.clone();
+                    followed += 1;
+                }
+            }
+        }
+
+        self.rebuild_after_rename(existing, &target);
+
+        // Section 9.11: links elsewhere are deliberately *not* rewritten, so
+        // the reader is told how many now point at nothing.
+        let broken = self.count_inbound(existing);
+        let name = target.file_name().unwrap_or_default().to_string_lossy();
+
+        if broken > 0 {
+            self.status.set(
+                format!("Renamed to {name}; {broken} documents now link to the old name"),
+                Severity::Warning,
+            );
+        } else {
+            self.status.set(
+                format!("Renamed to {name} ({followed} tabs)"),
+                Severity::Info,
+            );
+        }
+    }
+
+    /// Move a renamed file in the tree and the index.
+    fn rebuild_after_rename(&mut self, from: &Path, to: &Path) {
+        let (Some(old), Some(new)) = (
+            self.vault.relative(from).map(Path::to_path_buf),
+            self.vault.relative(to).map(Path::to_path_buf),
+        ) else {
+            return;
+        };
+
+        self.vault.index.remove(&old);
+        self.vault.markdown.retain(|(path, _, _)| path != &old);
+
+        self.vault.tree.insert_all([crate::vault::walker::Entry {
+            path: new.clone(),
+            is_dir: false,
+            mtime: None,
+            size: 0,
+        }]);
+        self.vault.markdown.push((new.clone(), None, 0));
+        self.vault.tree.remove(&old);
+        self.reindex(&new);
+        self.vault.tree.reveal(&new);
+    }
+
+    /// How many indexed documents link to a path.
+    fn count_inbound(&self, path: &Path) -> usize {
+        let Some(relative) = self.vault.relative(path) else {
+            return 0;
+        };
+        self.vault.index.backlinks(relative, &self.wikilinks).len()
+    }
+
+    // -- Confirmations -------------------------------------------------------
+
+    /// Quit, asking first when a tab has unsaved edits.
+    fn quit(&mut self) {
+        if !self.any_dirty() {
+            self.should_quit = true;
+            return;
+        }
+
+        let dirty = self.tabs.iter().filter(|tab| tab.dirty).count();
+        self.overlay = Some(Overlay::Confirm {
+            question: format!("{dirty} documents have unsaved edits. Quit anyway?"),
+            choices: vec![('d', "discard and quit".into())],
+            action: ConfirmAction::Quit,
+        });
+        self.focus = Focus::Overlay;
+    }
+
+    /// Answer the open confirmation.
+    fn confirm(&mut self, key: char) {
+        let Some(Overlay::Confirm { action, .. }) = self.overlay.clone() else {
+            return;
+        };
+
+        match (&action, key) {
+            (ConfirmAction::LeaveEditMode, 's') => {
+                self.close_overlay();
+                self.save(false);
+                // A save that hit a conflict has opened its own overlay; only
+                // a clean save leaves edit mode.
+                if self.overlay.is_none() && !self.tab().dirty {
+                    self.finish_edit_mode();
+                }
+            }
+            (ConfirmAction::LeaveEditMode, 'd') => {
+                self.close_overlay();
+                self.finish_edit_mode();
+            }
+            (ConfirmAction::Quit, 'd') => {
+                self.close_overlay();
+                self.should_quit = true;
+            }
+            (ConfirmAction::OverwriteChanged, 'o') => {
+                self.close_overlay();
+                self.save(true);
+            }
+            (ConfirmAction::OverwriteChanged, 'r') => {
+                self.close_overlay();
+                self.tabs[self.active_tab].dirty = false;
+                self.finish_edit_mode();
+                self.reload_document();
+            }
+            (ConfirmAction::CreatePage { path }, 'y') => {
+                let path = path.clone();
+                self.close_overlay();
+                self.create_and_open(&path);
+            }
+            (ConfirmAction::RestoreRecovery { path }, 'y') => {
+                let path = path.clone();
+                self.close_overlay();
+                self.restore_recovery(&path);
+            }
+            (ConfirmAction::RestoreRecovery { path }, 'n') => {
+                let path = path.clone();
+                self.close_overlay();
+                buffer::clear_recovery(&self.vault.root, &path);
+            }
+            // Anything else — `c`, `n`, `Esc` — leaves things as they were.
+            _ => self.close_overlay(),
+        }
+    }
+
+    /// Put recovered text into the buffer.
+    fn restore_recovery(&mut self, path: &Path) {
+        let Some(text) = buffer::read_recovery(&self.vault.root, path) else {
+            return;
+        };
+
+        let index = self.active_tab;
+        if let Some(editor) = &mut self.tabs[index].editor {
+            editor.textarea.select_all();
+            editor.textarea.insert_str(text);
+            self.tabs[index].dirty = true;
+        }
+
+        buffer::clear_recovery(&self.vault.root, path);
+        self.status.set("Restored unsaved text", Severity::Info);
+    }
+
+    /// Park every dirty buffer where it can be offered back.
+    ///
+    /// Called on the way out when a signal arrives: the process is about to
+    /// end and there is nowhere to ask the reader what they want.
+    pub fn write_recovery_files(&self) {
+        for tab in &self.tabs {
+            let (Some(doc), Some(editor)) = (&tab.doc, &tab.editor) else {
+                continue;
+            };
+            if !editor.is_dirty() {
+                continue;
+            }
+
+            if let Err(e) = buffer::write_recovery(&self.vault.root, &doc.path, &editor.text()) {
+                tracing::warn!("cannot write a recovery file: {e}");
+            }
+        }
+    }
+
+    /// Whether any tab has unsaved edits.
+    pub fn any_dirty(&self) -> bool {
+        self.tabs.iter().any(|tab| tab.dirty)
+    }
+
     // -- Prompts -------------------------------------------------------------
 
     /// Open a prompt, pre-filled where that is the useful thing to do.
@@ -1256,6 +1952,22 @@ impl App {
             // Re-running a search with one word changed is far more common
             // than starting from nothing.
             PromptKind::ProjectSearch => self.search.query.clone(),
+            // A new file starts beside where the reader is, so the common
+            // case is typing a name and pressing Enter.
+            PromptKind::NewFile => self.new_file_prefix(),
+            PromptKind::RenameDocument => self
+                .tab()
+                .doc
+                .as_ref()
+                .and_then(|doc| doc.path.file_name())
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            PromptKind::RenameTreeEntry => self
+                .vault
+                .tree
+                .selected()
+                .map(|node| node.name.clone())
+                .unwrap_or_default(),
         };
 
         self.overlay = Some(Overlay::Prompt {
@@ -1282,6 +1994,51 @@ impl App {
 
         match kind {
             PromptKind::ProjectSearch => self.start_search(input.value()),
+            PromptKind::NewFile => self.create_file(input.value()),
+            PromptKind::RenameDocument => {
+                let path = self.tab().doc.as_ref().map(|doc| doc.path.clone());
+                if let Some(path) = path {
+                    self.rename(&path, input.value());
+                }
+            }
+            PromptKind::RenameTreeEntry => {
+                let path = self
+                    .vault
+                    .tree
+                    .selected()
+                    .map(|node| self.vault.absolute(&node.path));
+                if let Some(path) = path {
+                    self.rename(&path, input.value());
+                }
+            }
+        }
+    }
+
+    /// What the new-file prompt opens pre-filled with.
+    ///
+    /// The directory the reader is in, so a bare name lands beside what they
+    /// are looking at. The sidebar's selection wins when it has focus, because
+    /// that is what they were pointing at.
+    fn new_file_prefix(&self) -> String {
+        let from_tree = (self.focus == Focus::Sidebar)
+            .then(|| self.vault.tree.selected())
+            .flatten()
+            .map(|node| {
+                if node.is_dir {
+                    node.path.clone()
+                } else {
+                    node.path.parent().unwrap_or(Path::new("")).to_path_buf()
+                }
+            });
+
+        let directory = from_tree.or_else(|| {
+            self.active_path()
+                .and_then(|path| path.parent().map(Path::to_path_buf))
+        });
+
+        match directory {
+            Some(dir) if !dir.as_os_str().is_empty() => format!("{}/", dir.display()),
+            _ => String::new(),
         }
     }
 
@@ -1542,6 +2299,94 @@ impl App {
         self.recent.retain(|seen| seen != &relative);
         self.recent.insert(0, relative);
         self.recent.truncate(MAX_RECENT);
+    }
+
+    // -- Live reload ---------------------------------------------------------
+
+    /// Start watching the vault for changes.
+    pub fn start_watch(&mut self, sink: impl Fn(WatchEvent) + Send + Sync + 'static) {
+        if !self.watch_config.enabled {
+            return;
+        }
+
+        self.watch = Some(crate::vault::watch::spawn(
+            self.vault.root.clone(),
+            std::time::Duration::from_millis(self.watch_config.debounce_ms),
+            sink,
+        ));
+    }
+
+    /// Handle a debounced batch of changes.
+    pub fn files_changed(&mut self, paths: &[PathBuf]) {
+        for relative in paths {
+            let absolute = self.vault.absolute(relative);
+            let mtime = std::fs::metadata(&absolute).and_then(|m| m.modified()).ok();
+
+            // A write perga made is not news; reloading on it would race the
+            // dirty flag that same save has just cleared.
+            if self.own_writes.claim(&absolute, mtime) {
+                continue;
+            }
+
+            if !self.files.is_markdown(&absolute) {
+                continue;
+            }
+
+            let size = std::fs::metadata(&absolute).map(|m| m.len()).unwrap_or(0);
+            self.vault.tree.insert_all([crate::vault::walker::Entry {
+                path: relative.clone(),
+                is_dir: false,
+                mtime,
+                size,
+            }]);
+            self.reindex(relative);
+
+            if self.active_path().as_deref() == Some(relative.as_path()) {
+                self.active_document_changed();
+            }
+        }
+    }
+
+    /// Handle paths that are gone.
+    pub fn files_removed(&mut self, paths: &[PathBuf]) {
+        for relative in paths {
+            self.vault.tree.remove(relative);
+            self.vault.index.remove(relative);
+            self.vault.markdown.retain(|(path, _, _)| path != relative);
+        }
+    }
+
+    /// The document being read changed underneath the reader.
+    fn active_document_changed(&mut self) {
+        if self.tab().dirty {
+            // Never clobber a buffer. The reader is told, and `r` is theirs to
+            // press when they are ready.
+            self.status
+                .set("File changed on disk (r to reload)", Severity::Warning);
+            return;
+        }
+
+        let scroll = self.tab().scroll;
+        let focused = self.tab().focused_link;
+
+        let Some(path) = self.tab().doc.as_ref().map(|doc| doc.path.clone()) else {
+            return;
+        };
+
+        match Document::load(&path) {
+            Ok(document) => {
+                self.open(document);
+                self.restore_scroll(scroll);
+                // The link index may have moved under the reader, so it is
+                // kept only where it still names a link.
+                let count = self.tab().doc.as_ref().map_or(0, |doc| doc.links.len());
+                self.tabs[self.active_tab].focused_link = focused.filter(|at| *at < count);
+            }
+            Err(e) => self.status.set(
+                format!("Cannot reload {}: {e}", path.display()),
+                Severity::Warning,
+            ),
+        }
     }
 
     // -- Sidebar dispatch ---------------------------------------------------
@@ -1861,13 +2706,53 @@ impl App {
                 });
                 self.focus = Focus::Overlay;
             }
-            WikiResolution::Missing { page, .. } => {
-                // Section 9.11 turns this into an offer to create the file;
-                // until then it says what it could not find.
-                self.status
-                    .set(format!("No page `{page}` in this vault"), Severity::Warning);
-            }
+            // Section 9.11: a broken wiki-link is the one place perga offers
+            // to create a file. A broken *inline* link never does.
+            WikiResolution::Missing { page, .. } => self.offer_to_create(&page),
         }
+    }
+
+    /// Offer to create the page a wiki-link named but nothing answers to.
+    fn offer_to_create(&mut self, page: &str) {
+        let configured = &self.wikilinks.new_file_dir;
+        let directory = if configured.as_os_str().is_empty() {
+            // Empty means the active document's own directory, which is where
+            // a note written about what is in front of you belongs.
+            self.active_path()
+                .and_then(|path| path.parent().map(Path::to_path_buf))
+                .unwrap_or_default()
+        } else {
+            configured.clone()
+        };
+
+        let resolved = crate::editor::resolve_new_path(
+            page,
+            &self.vault.absolute(&directory),
+            &self.vault.root,
+            &self.files,
+        );
+
+        let path = match resolved {
+            Ok(path) => path,
+            Err(e) => {
+                self.status.set(e.to_string(), Severity::Warning);
+                return;
+            }
+        };
+
+        let shown = self
+            .vault
+            .relative(&path)
+            .unwrap_or(&path)
+            .display()
+            .to_string();
+
+        self.overlay = Some(Overlay::Confirm {
+            question: format!("Create \"{shown}\"?"),
+            choices: vec![('y', "create".into())],
+            action: ConfirmAction::CreatePage { path },
+        });
+        self.focus = Focus::Overlay;
     }
 
     /// Open the candidate the disambiguation overlay has selected.
@@ -2115,6 +3000,11 @@ impl App {
             return;
         }
 
+        if self.tab().mode == TabMode::Edit {
+            self.leave_edit_mode();
+            return;
+        }
+
         if !self.keymap.pending().is_empty() {
             self.keymap.clear_pending();
             self.status.pending = None;
@@ -2159,6 +3049,8 @@ pub enum Message {
     Index(IndexEvent),
     /// The project searcher reported something.
     Search(SearchEvent),
+    /// The filesystem watcher reported something.
+    Watch(WatchEvent),
 }
 
 /// Run the application until it quits.
@@ -2188,9 +3080,54 @@ pub fn run(terminal: &mut Tui, app: &mut App, messages: &Receiver<Message>) -> a
             suspend(terminal)?;
         }
 
+        if let Some(path) = app.external_edit.take() {
+            match hand_over(terminal, app, &path) {
+                Ok(()) => app.update(Action::ReloadDocument),
+                Err(e) => app
+                    .status
+                    .set(format!("$EDITOR failed: {e}"), Severity::Error),
+            }
+        }
+
         if app.should_quit {
             break;
         }
+    }
+
+    Ok(())
+}
+
+/// Run `$EDITOR` on a file with the terminal handed back to it.
+///
+/// The editor is very likely a full-screen application itself, so perga leaves
+/// the alternate screen and raw mode entirely rather than trying to share
+/// them, waits for the child, and sets the terminal back up afterwards.
+fn hand_over(terminal: &mut Tui, app: &App, path: &Path) -> anyhow::Result<()> {
+    use std::process::Command;
+
+    let command = app
+        .external_command()
+        .ok_or_else(|| anyhow::anyhow!("no editor configured"))?;
+
+    // Split on whitespace so `editor.external_command = "code --wait"` works;
+    // the *path* is still a separate argument and never goes through a shell.
+    let mut parts = command.split_whitespace();
+    let program = parts
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("no editor configured"))?;
+
+    let mouse = terminal::mouse_capture_active();
+    terminal::restore()?;
+
+    let status = Command::new(program).args(parts).arg(path).status();
+
+    *terminal = terminal::setup(mouse)?;
+    // The editor owned the screen; nothing perga drew before is still there.
+    terminal.clear()?;
+
+    let status = status?;
+    if !status.success() {
+        anyhow::bail!("the editor exited with {status}");
     }
 
     Ok(())

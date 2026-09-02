@@ -20,6 +20,7 @@ use ratatui::Frame;
 use crate::app::{App, Overlay};
 use crate::ui::hints::Hints;
 use crate::ui::layout::{SidebarPlacement, MIN_HEIGHT, MIN_WIDTH};
+use crate::ui::overlay::confirm::{self, Confirm};
 use crate::ui::overlay::find::FindBar;
 use crate::ui::overlay::help::Help;
 use crate::ui::overlay::prompt::PromptLine;
@@ -135,6 +136,11 @@ fn render_with(app: &App, frame: &mut Frame, lines: &[Line<'static>], total: Opt
                 *selected,
             )
             .render(centred(area), buf);
+        }
+        Some(Overlay::Confirm {
+            question, choices, ..
+        }) => {
+            Confirm::new(&app.theme, question, choices).render(confirm::area(area), buf);
         }
         Some(Overlay::Disambiguate {
             page,
