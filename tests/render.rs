@@ -146,6 +146,22 @@ fn search_and_switcher() {
     insta::assert_snapshot!("quick_switcher", frame(&mut app, 120, 40));
 }
 
+/// Edit mode, and the confirmation that guards leaving it dirty.
+#[test]
+fn edit_mode_and_confirm() {
+    let mut app = common::app_with("gfm.md", 120, 40);
+    frame(&mut app, 120, 40);
+    app.update(Action::EnterEditMode);
+    insta::assert_snapshot!("edit_mode", frame(&mut app, 120, 40));
+
+    app.update(Action::EditInput(crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('x'),
+        crossterm::event::KeyModifiers::NONE,
+    )));
+    app.update(Action::Escape);
+    insta::assert_snapshot!("confirm_overlay", frame(&mut app, 120, 40));
+}
+
 #[test]
 fn help_overlay() {
     let mut app = app(120, 40);

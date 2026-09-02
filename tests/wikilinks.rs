@@ -110,16 +110,27 @@ fn an_ambiguous_page_asks_rather_than_guessing() {
     );
 }
 
+/// Section 9.11: a broken wiki-link is the one place perga offers to create a
+/// file, and it asks before it does.
 #[test]
-fn a_page_nobody_has_written_yet_says_so_and_creates_nothing() {
+fn a_page_nobody_has_written_yet_offers_to_create_it() {
     let mut app = reader("wiki.md");
     let missing = vault().join("Not Yet Written.md");
 
     focus_wiki(&mut app, "Not Yet Written");
     app.update(Action::FollowLink);
 
-    let (message, _) = app.status.message.clone().expect("a message");
-    assert!(message.contains("Not Yet Written"), "{message}");
+    let Some(Overlay::Confirm { question, .. }) = &app.overlay else {
+        panic!("a broken wiki-link offers to create the page");
+    };
+    assert!(question.contains("Not Yet Written.md"), "{question}");
+    assert!(
+        !missing.exists(),
+        "nothing is created until it is confirmed"
+    );
+
+    // Declining leaves the vault alone.
+    app.update(Action::Escape);
     assert!(!missing.exists());
 }
 

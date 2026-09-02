@@ -15,7 +15,7 @@ use crate::doc::links::{self, Link};
 use crate::doc::outline::{Heading, Slugger};
 
 /// The byte-order mark, which some editors write and which must survive a save.
-const BOM: char = '\u{feff}';
+pub const BOM: char = '\u{feff}';
 
 /// What kind of content a block holds.
 ///

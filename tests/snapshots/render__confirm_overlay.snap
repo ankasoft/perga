@@ -1,0 +1,44 @@
+---
+source: tests/render.rs
+expression: "frame(&mut app, 120, 40)"
+---
+ perga gfm.md                                                                                                      1/43
+┌──────────────────────────────┐┌──────────────────────────────────────────────────────────────────────────────────────┐
+│FILES search outline links    ││x# GFM features                                                                       │
+│31 entries                    ││                                                                                      │
+│▸ .github                     ││## A table with mixed alignment                                                       │
+│▸ docs                        ││                                                                                      │
+│▸ spaces and #hash            ││| Left | Centre | Right |                                                             │
+│  anchors.md                  ││|:-----|:------:|------:|                                                             │
+│  broken-links.md             ││| a    | b      | c     |                                                             │
+│  crlf.md                     ││| longer cell | x | 12345 |                                                           │
+│  cycle-a.md                  ││                                                                                      │
+│  cycle-b.md                  ││## A task list                                                                        │
+│  empty.md                    ││                                                                                      │
+│  frontmatter-only.md         ││- [x] a finished task                                                                 │
+│● gfm.md                      ││- [ ] an unfinished task                                                              │
+│  invalid-utf8.md             ││                                                                                      │
+│  no-trailing-newline.md      ││## Deeply nested lists                                                                │
+│  outside.md  ┌────────────────────────────────────────────────────────────────────────────────────────┐              │
+│  README.md   │This document has unsaved edits.                                                        │              │
+│  unicode.md  │                                                                                        │              │
+│  wide.md     │                                                                                        │              │
+│  wiki.md     │ s  save    d  discard    c  cancel                                                     │              │
+│              └────────────────────────────────────────────────────────────────────────────────────────┘              │
+│                              ││                                                                                      │
+│                              ││## A blockquote containing a list                                                     │
+│                              ││                                                                                      │
+│                              ││> Quoted text.                                                                        │
+│                              ││>                                                                                     │
+│                              ││> - first                                                                             │
+│                              ││> - second                                                                            │
+│                              ││>                                                                                     │
+│                              ││> More quoted text.                                                                   │
+│                              ││                                                                                      │
+│                              ││## Code blocks                                                                        │
+│                              ││                                                                                      │
+│                              ││```rust                                                                               │
+│                              ││fn main() {                                                                           │
+│                              ││    println!("hello");                                                                │
+└──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
+ EDIT  ● 1:2  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help

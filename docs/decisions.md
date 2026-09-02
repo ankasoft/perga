@@ -599,3 +599,75 @@ A prompt wrapper rather than a mode: the configured `search.regex` decides the
 default, and a reader who wants one regular expression writes it between
 slashes without changing their configuration. An invalid pattern is reported in
 the sidebar and the previous results stay put.
+
+## M9 — Editor, file operations, and live reload
+
+### D64: dirty is a content comparison, not a flag
+
+The buffer hashes its lines and compares against the hash of what was last on
+disk. Undoing back to the saved text therefore makes the tab clean again, which
+an "edited" flag would not — and the reader who undid their way back to where
+they started should not be asked whether to save nothing.
+
+### D65: the mtime conflict check has a one-second tolerance
+
+Some filesystems store whole seconds. Comparing exactly would make every save
+on those report a conflict that is not there, and a conflict prompt the reader
+learns to dismiss is worse than none.
+
+### D66: the atomic write is a sibling, not a temporary directory
+
+`rename` is only atomic within one filesystem, so the temporary file is written
+beside its target. It is named `.<file>.perga-<pid>.tmp` — dotted, so an
+interrupted save leaves nothing the tree shows by default — and removed on
+every failure path.
+
+### D67: `$EDITOR` handoff belongs to the event loop
+
+`App` is deliberately terminal-free, and running an editor means leaving the
+alternate screen and raw mode entirely and putting them back afterwards. `o`
+therefore sets a path on `App` and the loop does the work, the same way `Ctrl+Z`
+already suspends. The command is split on whitespace so
+`external_command = "code --wait"` works; the *path* stays a separate argument
+and never goes through a shell.
+
+### D68: perga's own writes are claimed once
+
+After a save the `(path, mtime)` pair is recorded. The watcher's report of that
+exact write is dropped and the record consumed. Without it, every save races the
+dirty flag it has just cleared: the write lands, the watcher reports it, and the
+document reloads on top of the buffer that produced it.
+
+A second change to the same path with a *different* mtime clears the record and
+reloads: that is somebody else writing.
+
+### D69: renaming does not rewrite links
+
+Section 9.11 is explicit, and the reason is worth restating: rewriting links
+across a vault is easy to get wrong and impossible to undo. perga renames the
+file, follows every tab that had it open, moves it in the tree and the index,
+and then *says* how many documents now link to the old name. The search mode
+finds them.
+
+### D70: a paste is one `insert_str`
+
+Bracketed paste arrives as a single event and is inserted in one call, so
+`tui-textarea` records it as one undo step. Feeding it character by character
+would make undoing a 5,000-line paste 5,000 key presses.
+
+### D71: recovery files are written on the way out, not continuously
+
+A signal gives no chance to ask, so `ForceQuit` parks every dirty buffer under
+`$XDG_STATE_HOME/perga/recovery/` before it exits, and entering edit mode on a
+document that has one offers it back. Writing them continuously would double
+every keystroke's cost for a case that happens once.
+
+### D72: the `$EDITOR` handoff is not covered by an automated test
+
+Driving a real `vim` needs a pseudo-terminal, which is a dependency and a class
+of flakiness this project does not otherwise have. `hand_over` is small, and
+every part of it that can be tested without one — resolving the command from
+configuration and the environment, refusing when there is none, refusing while
+the buffer is dirty — is. **Verified by hand** on this machine with
+`EDITOR=vim`: the editor takes the screen, exits cleanly, and perga repaints
+with the file reloaded. A reviewer on another platform should repeat it.
