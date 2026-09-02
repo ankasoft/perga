@@ -93,6 +93,8 @@ pub enum Action {
     FollowLinkInNewTab,
     /// Label every visible link and follow the one whose label is typed.
     HintMode,
+    /// Follow the link a hint label selected. Not bindable; hint mode emits it.
+    FollowHintedLink(usize),
     /// Go back in this tab's history.
     HistoryBack,
     /// Go forward in this tab's history.

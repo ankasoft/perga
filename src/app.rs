@@ -15,6 +15,7 @@ use crate::config::keymap::Keymap;
 use crate::config::schema::{FilesConfig, GeneralConfig, UiConfig};
 use crate::doc::document::Document;
 use crate::doc::highlight::Highlighter;
+use crate::doc::links;
 use crate::doc::render::{RenderedDocument, Renderer};
 use crate::terminal::{self, Tui};
 use crate::theme::Theme;
@@ -57,6 +58,70 @@ impl TabMode {
     }
 }
 
+/// Somewhere a tab has been, exactly enough to go back to it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Location {
+    /// The document.
+    pub path: PathBuf,
+    /// The heading the reader was at, when they arrived at one.
+    pub anchor: Option<String>,
+    /// The rendered line offset, restored exactly on the way back.
+    pub scroll: usize,
+}
+
+/// The most locations one tab remembers.
+///
+/// A cap rather than an unbounded stack: cyclic links (A → B → A → …) are
+/// ordinary in a wiki, and without a cap a reader following them long enough
+/// grows the stack without limit.
+pub const MAX_HISTORY: usize = 100;
+
+/// One tab's back and forward stacks.
+#[derive(Debug, Clone, Default)]
+pub struct History {
+    back: Vec<Location>,
+    forward: Vec<Location>,
+}
+
+impl History {
+    /// Record where the reader is leaving from.
+    ///
+    /// Navigating anywhere new truncates the forward stack: the future the
+    /// reader had is not the future they are choosing.
+    pub fn push(&mut self, from: Location) {
+        self.forward.clear();
+        self.back.push(from);
+
+        if self.back.len() > MAX_HISTORY {
+            self.back.remove(0);
+        }
+    }
+
+    /// Step back, given where the reader is now.
+    pub fn back(&mut self, current: Location) -> Option<Location> {
+        let previous = self.back.pop()?;
+        self.forward.push(current);
+        Some(previous)
+    }
+
+    /// Step forward, given where the reader is now.
+    pub fn forward(&mut self, current: Location) -> Option<Location> {
+        let next = self.forward.pop()?;
+        self.back.push(current);
+        Some(next)
+    }
+
+    /// How many steps back are available.
+    pub fn back_len(&self) -> usize {
+        self.back.len()
+    }
+
+    /// How many steps forward are available.
+    pub fn forward_len(&self) -> usize {
+        self.forward.len()
+    }
+}
+
 /// One tab: a document, its history, and its own scroll and find state.
 #[derive(Debug, Default)]
 pub struct Tab {
@@ -70,6 +135,10 @@ pub struct Tab {
     pub hscroll: u16,
     /// Read or edit.
     pub mode: TabMode,
+    /// Where this tab has been. Per tab, never shared.
+    pub history: History,
+    /// The link `Enter` would follow, as an index into the document's links.
+    pub focused_link: Option<usize>,
 }
 
 impl Tab {
@@ -157,6 +226,13 @@ pub enum Overlay {
     Help {
         /// How far the reference is scrolled.
         scroll: u16,
+    },
+    /// Link hint mode: every visible link wears a label.
+    Hints {
+        /// The links wearing labels, in reading order.
+        links: Vec<usize>,
+        /// The label typed so far.
+        typed: String,
     },
 }
 
@@ -308,8 +384,14 @@ impl App {
         if let Some(reason) = doc.read_only {
             self.status.set(reason.message(), Severity::Warning);
         }
+        // Everything about the *view* is replaced; the tab's history and its
+        // read-or-edit mode belong to the tab, not to the document in it.
         let tab = &mut self.tabs[self.active_tab];
-        *tab = Tab::with_document(doc);
+        tab.doc = Some(doc);
+        tab.layout = RenderedDocument::new();
+        tab.scroll = 0;
+        tab.hscroll = 0;
+        tab.focused_link = None;
 
         self.reveal_active_document();
     }
@@ -433,6 +515,15 @@ impl App {
                 self.vault.tree.set_filter(None);
             }
             Action::OpenPath(path) => self.open_path(&path),
+
+            // -- Links and history ----------------------------------------
+            Action::NextLink => self.cycle_link(true),
+            Action::PrevLink => self.cycle_link(false),
+            Action::FollowLink => self.follow_focused_link(),
+            Action::HintMode => self.open_hint_mode(),
+            Action::FollowHintedLink(index) => self.follow_link(index),
+            Action::HistoryBack => self.navigate_history(false),
+            Action::HistoryForward => self.navigate_history(true),
 
             // Actions whose handlers arrive with the features that need them.
             _ => {}
@@ -611,6 +702,288 @@ impl App {
         self.vault.tree.set_filter(Some(value));
     }
 
+    // -- Links and history -------------------------------------------------
+
+    /// Where the active tab is, for the history stack.
+    fn location(&self) -> Option<Location> {
+        let tab = self.tab();
+        let doc = tab.doc.as_ref()?;
+        Some(Location {
+            path: doc.path.clone(),
+            anchor: None,
+            scroll: tab.scroll,
+        })
+    }
+
+    /// Move the link focus, bringing the newly focused link into view.
+    fn cycle_link(&mut self, forward: bool) {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+        let count = doc.links.len();
+
+        if count == 0 {
+            self.status.set("No links in this document", Severity::Info);
+            return;
+        }
+
+        let next = match self.tab().focused_link {
+            Some(at) if forward => (at + 1) % count,
+            Some(at) => (at + count - 1) % count,
+            // Starting from nothing, `n` takes the first link and `N` the last.
+            None if forward => 0,
+            None => count - 1,
+        };
+
+        self.tabs[self.active_tab].focused_link = Some(next);
+        self.scroll_focused_link_into_view();
+    }
+
+    /// Scroll just enough to put the focused link on screen.
+    fn scroll_focused_link_into_view(&mut self) {
+        let height = usize::from(self.page());
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+        let Some(index) = tab.focused_link else {
+            return;
+        };
+        let Some(link) = doc.links.get(index) else {
+            return;
+        };
+
+        let Some(line) = tab.layout.line_of_offset(doc, &renderer, link.range.start) else {
+            return;
+        };
+
+        // Only move when the link is off screen: cycling through links in a
+        // paragraph that is already visible should not shift the page.
+        if line < tab.scroll {
+            tab.scroll = line;
+        } else if line >= tab.scroll + height {
+            tab.scroll = line.saturating_sub(height.saturating_sub(1));
+        }
+    }
+
+    /// Resolve and act on the focused link.
+    pub fn follow_focused_link(&mut self) {
+        let Some(index) = self.tab().focused_link else {
+            self.status
+                .set("No link focused; press `n` or `f`", Severity::Info);
+            return;
+        };
+        self.follow_link(index);
+    }
+
+    /// Resolve and act on one of the active document's links.
+    pub fn follow_link(&mut self, index: usize) {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+        let Some(link) = doc.links.get(index) else {
+            return;
+        };
+
+        let target = link.target.clone();
+        let resolved = links::resolve(&target, doc.dir(), &self.vault.root, &self.files);
+
+        match resolved {
+            links::Resolved::Document { path, anchor } => self.navigate_to(&path, anchor),
+            // An anchor in the current document scrolls; it does not reload.
+            links::Resolved::Anchor { slug } => self.jump_to_anchor(&slug),
+            links::Resolved::Directory { path } => self.reveal_directory(&path),
+            links::Resolved::External { url } => self.open_externally(Path::new(&url), &url),
+            links::Resolved::Other { path } => {
+                let shown = path.display().to_string();
+                self.open_externally(&path, &shown);
+            }
+            links::Resolved::Broken { target } => self
+                .status
+                .set(format!("Cannot resolve: {target}"), Severity::Error),
+        }
+    }
+
+    /// Open a document, recording where the reader came from.
+    fn navigate_to(&mut self, path: &Path, anchor: Option<String>) {
+        let from = self.location();
+
+        match Document::load(path) {
+            Ok(document) => {
+                if let Some(from) = from {
+                    self.tabs[self.active_tab].history.push(from);
+                }
+                self.open(document);
+                if let Some(slug) = anchor {
+                    self.jump_to_anchor(&slug);
+                }
+            }
+            Err(e) => self.status.set(
+                format!("Cannot read {}: {e}", path.display()),
+                Severity::Error,
+            ),
+        }
+    }
+
+    /// Scroll to a heading in the active document.
+    fn jump_to_anchor(&mut self, slug: &str) {
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+        let Some(offset) = doc.heading(slug).map(|h| h.offset) else {
+            self.status
+                .set(format!("No heading `{slug}`"), Severity::Warning);
+            return;
+        };
+
+        if let Some(line) = tab.layout.line_of_offset(doc, &renderer, offset) {
+            tab.scroll = line;
+        }
+    }
+
+    /// Show a directory in the tree rather than trying to open it.
+    fn reveal_directory(&mut self, path: &Path) {
+        let Some(relative) = self.vault.relative(path).map(Path::to_path_buf) else {
+            self.status.set(
+                format!("{} is outside the vault", path.display()),
+                Severity::Warning,
+            );
+            return;
+        };
+
+        if !self.vault.tree.reveal(&relative) {
+            // The walk may not have reached it yet, which is not an error.
+            self.status.set(
+                format!("{} is not in the tree yet", relative.display()),
+                Severity::Info,
+            );
+            return;
+        }
+
+        self.sidebar.mode = SidebarMode::Files;
+        self.sidebar.visible = true;
+        self.focus = Focus::Sidebar;
+    }
+
+    /// Hand something to the desktop opener, reporting either way.
+    fn open_externally(&mut self, path: &Path, shown: &str) {
+        match crate::vault::open_external(path) {
+            Ok(()) => self.status.set(format!("Opened {shown}"), Severity::Info),
+            // Without an opener the URL is at least readable, and `y` copies it.
+            Err(e) => self
+                .status
+                .set(format!("Cannot open {shown}: {e}"), Severity::Error),
+        }
+    }
+
+    /// Step back or forward through the active tab's history.
+    fn navigate_history(&mut self, forward: bool) {
+        let Some(current) = self.location() else {
+            return;
+        };
+
+        let index = self.active_tab;
+        let step = if forward {
+            self.tabs[index].history.forward(current)
+        } else {
+            self.tabs[index].history.back(current)
+        };
+
+        let Some(target) = step else {
+            let direction = if forward { "forward" } else { "back" };
+            self.status
+                .set(format!("No further {direction}"), Severity::Info);
+            return;
+        };
+
+        // Already here: an anchor jump within one document is a history entry
+        // whose path has not changed, so it must not cost a reload.
+        let same = self
+            .tab()
+            .doc
+            .as_ref()
+            .is_some_and(|d| d.path == target.path);
+
+        if !same {
+            match Document::load(&target.path) {
+                Ok(document) => self.open(document),
+                Err(e) => {
+                    self.status.set(
+                        format!("Cannot read {}: {e}", target.path.display()),
+                        Severity::Error,
+                    );
+                    return;
+                }
+            }
+        }
+
+        self.restore_scroll(target.scroll);
+    }
+
+    /// Put the viewport back at an exact scroll offset.
+    ///
+    /// Going back restores where the reader was, not the top of the document,
+    /// which means measuring far enough down to know the offset is reachable.
+    fn restore_scroll(&mut self, scroll: usize) {
+        let height = self.page();
+        let renderer = self.renderer(self.viewport_inner().width);
+        let tab = &mut self.tabs[self.active_tab];
+
+        let Some(doc) = &tab.doc else { return };
+
+        tab.layout.window(doc, &renderer, scroll, height);
+        tab.scroll = match tab.max_scroll(height) {
+            Some(max) => scroll.min(max),
+            None => scroll.min(tab.layout.measured_lines()),
+        };
+    }
+
+    /// Label every link in view and wait for the label to be typed.
+    fn open_hint_mode(&mut self) {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return;
+        };
+        if doc.links.is_empty() {
+            self.status.set("No links in this document", Severity::Info);
+            return;
+        }
+
+        let visible = self.visible_links();
+        if visible.is_empty() {
+            self.status.set("No links in view", Severity::Info);
+            return;
+        }
+
+        self.overlay = Some(Overlay::Hints {
+            links: visible,
+            typed: String::new(),
+        });
+        self.focus = Focus::Overlay;
+    }
+
+    /// The indices of the links inside the current viewport, in reading order.
+    pub fn visible_links(&self) -> Vec<usize> {
+        let Some(doc) = self.tab().doc.as_ref() else {
+            return Vec::new();
+        };
+
+        let tab = self.tab();
+        let height = usize::from(self.page());
+        let map = tab.layout.line_map();
+        let window = tab.scroll..tab.scroll + height;
+
+        doc.links
+            .iter()
+            .enumerate()
+            .filter(|(_, link)| {
+                map.line_of_offset(link.range.start)
+                    .is_some_and(|line| window.contains(&line))
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
     /// Move focus between the sidebar and the viewport.
     ///
     /// Edit mode locks focus to the viewport, and an open overlay owns focus
@@ -674,7 +1047,8 @@ impl App {
     fn toggle_help(&mut self) {
         match self.overlay {
             Some(Overlay::Help { .. }) => self.close_overlay(),
-            None => {
+            // Help replaces whatever else was open rather than stacking on it.
+            _ => {
                 self.overlay = Some(Overlay::Help { scroll: 0 });
                 self.focus = Focus::Overlay;
             }
