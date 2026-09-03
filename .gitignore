@@ -10,3 +10,6 @@
 
 # criterion output
 /criterion
+
+# The build specification. Kept locally; not part of the published project.
+/AGENTS.md

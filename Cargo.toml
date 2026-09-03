@@ -18,7 +18,6 @@ exclude = [
     "/packaging",
     "/demo",
     "/.githooks",
-    "/AGENTS.md",
 ]
 
 [dependencies]
