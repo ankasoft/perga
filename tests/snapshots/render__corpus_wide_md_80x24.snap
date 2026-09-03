@@ -25,4 +25,4 @@ expression: "frame(&mut app, width, height)"
 │● wide.md                     ││                                              │
 │  wiki.md                     ││                                              │
 └──────────────────────────────┘└──────────────────────────────────────────────┘
- READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find
+ READ  Tab file tree  H/L history  f links  Ctrl+B hide sidebar  Ctrl+O switch

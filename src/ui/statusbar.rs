@@ -15,9 +15,14 @@ use crate::app::{App, Severity, DIRTY_MARKER};
 /// a remap moves the hint with it. The first entry of each pair is the action
 /// whose key is shown; the second, when present, is shown after a slash.
 const HINTS: &[(Action, Option<Action>, &str)] = &[
+    // First, and never dropped as the terminal narrows: reaching the file tree
+    // is the first thing a reader wants and the one action nothing else hints
+    // at. `Ctrl+B` below *hides* the sidebar, which is a poor thing to discover
+    // by pressing the only key labelled "sidebar".
+    (Action::FocusNext, None, "file tree"),
     (Action::HistoryBack, Some(Action::HistoryForward), "history"),
     (Action::HintMode, None, "links"),
-    (Action::ToggleSidebar, None, "sidebar"),
+    (Action::ToggleSidebar, None, "hide sidebar"),
     (Action::OpenQuickSwitcher, None, "switch"),
     (Action::OpenFindInDocument, None, "find"),
     (Action::ToggleHelp, None, "help"),

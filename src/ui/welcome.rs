@@ -90,8 +90,9 @@ impl LogoTier {
 /// The onboarding hints shown under the logo, so an empty screen doubles as
 /// onboarding. The keys come from the keymap, so a remap moves them too.
 const HINTS: &[(Action, &str)] = &[
+    (Action::FocusNext, "focus the file tree"),
     (Action::OpenQuickSwitcher, "find a document"),
-    (Action::ToggleSidebar, "toggle sidebar"),
+    (Action::ToggleSidebar, "hide the sidebar"),
     (Action::ToggleHelp, "all keybindings"),
 ];
 

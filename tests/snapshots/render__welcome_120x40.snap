@@ -20,8 +20,9 @@ expression: "frame(&mut app, width, height)"
 │                              ││                                                                                      │
 │                              ││                                      perga #####                                     │
 │                              ││                                                                                      │
+│                              ││                                 Tab   focus the file tree                            │
 │                              ││                                Ctrl+O   find a document                              │
-│                              ││                                 Ctrl+B   toggle sidebar                              │
+│                              ││                                Ctrl+B   hide the sidebar                             │
 │                              ││                                     ?   all keybindings                              │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
@@ -39,6 +40,5 @@ expression: "frame(&mut app, width, height)"
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
-│                              ││                                                                                      │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
+ READ  Tab file tree  H/L history  f links  Ctrl+B hide sidebar  Ctrl+O switch  Ctrl+F find  ? help

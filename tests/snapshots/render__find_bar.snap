@@ -41,4 +41,4 @@ expression: "frame(&mut app, 120, 40)"
 │                              ││                                                                                      │
 │                              ││/section                                                                         1/13 │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
+ READ  Tab file tree  H/L history  f links  Ctrl+B hide sidebar  Ctrl+O switch  Ctrl+F find  ? help

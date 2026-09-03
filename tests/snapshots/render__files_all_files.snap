@@ -20,10 +20,10 @@ expression: "frame(&mut app, 120, 40)"
 │  gfm.md                      ││                                                                                      │
 │  invalid-utf8.md             ││                                      perga #####                                     │
 │  loop                        ││                                                                                      │
-│  no-trailing-newline.md      ││                                Ctrl+O   find a document                              │
-│  outside.md                  ││                                 Ctrl+B   toggle sidebar                              │
-│  README.md                   ││                                     ?   all keybindings                              │
-│  unicode.md                  ││                                                                                      │
+│  no-trailing-newline.md      ││                                 Tab   focus the file tree                            │
+│  outside.md                  ││                                Ctrl+O   find a document                              │
+│  README.md                   ││                                Ctrl+B   hide the sidebar                             │
+│  unicode.md                  ││                                     ?   all keybindings                              │
 │  wide.md                     ││                                                                                      │
 │  wiki.md                     ││                                                                                      │
 │                              ││                                                                                      │

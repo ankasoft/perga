@@ -5,10 +5,10 @@ expression: "frame(&mut app, width, height)"
  perga
 ┌──────────────────┐───────────────────┐
 │FILES search      │ #####             │
-│outline links     │nd a document      │
-│0 entries, scannin│oggle sidebar      │
+│outline links     │s the file tree    │
+│0 entries, scannin│nd a document      │
+│                  │de the sidebar     │
 │                  │l keybindings      │
-│                  │                   │
 │                  │                   │
 └──────────────────┘───────────────────┘
  READ

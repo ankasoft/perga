@@ -825,6 +825,18 @@ before they can read a Markdown file is a poor first impression.
 one-liner is binary-only. That is what the tarball and the distribution
 packages are for, and `README.md` says so beside the command.
 
+### D83d: the status bar hints at `Tab` first
+
+Found by the first person to run the released binary: they could not work out
+how to reach the file tree. The status bar advertised `Ctrl+B sidebar`, which
+*hides* it — so the one key labelled "sidebar" made the sidebar disappear, and
+nothing anywhere mentioned `Tab`.
+
+`Tab focus the file tree` is now the first hint in the status bar and on the
+welcome screen, and the toggle is labelled `hide sidebar`. First in the list
+matters: hints are dropped from the right as the terminal narrows, so the one
+a new reader needs most is the last to go.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

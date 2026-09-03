@@ -20,10 +20,10 @@ expression: "frame(&mut app, 120, 40)"
 │  invalid-utf8.md             ││                                                                                      │
 │  no-trailing-newline.md      ││                                      perga #####                                     │
 │  outside.md                  ││                                                                                      │
-│  README.md                   ││                                Ctrl+O   find a document                              │
-│  unicode.md                  ││                                 Ctrl+B   toggle sidebar                              │
-│  wide.md                     ││                                     ?   all keybindings                              │
-│  wiki.md                     ││                                                                                      │
+│  README.md                   ││                                 Tab   focus the file tree                            │
+│  unicode.md                  ││                                Ctrl+O   find a document                              │
+│  wide.md                     ││                                Ctrl+B   hide the sidebar                             │
+│  wiki.md                     ││                                     ?   all keybindings                              │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 │                              ││                                                                                      │
@@ -41,4 +41,4 @@ expression: "frame(&mut app, 120, 40)"
 │                              ││                                                                                      │
 │                              ││                                                                                      │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- READ  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
+ READ  Tab file tree  H/L history  f links  Ctrl+B hide sidebar  Ctrl+O switch  Ctrl+F find  ? help

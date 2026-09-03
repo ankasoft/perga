@@ -41,4 +41,4 @@ expression: "frame(&mut app, 120, 40)"
 │                              ││fn main() {                                                                           │
 │                              ││    println!("hello");                                                                │
 └──────────────────────────────┘└──────────────────────────────────────────────────────────────────────────────────────┘
- EDIT  ● 1:2  H/L history  f links  Ctrl+B sidebar  Ctrl+O switch  Ctrl+F find  ? help
+ EDIT  ● 1:2  Tab file tree  H/L history  f links  Ctrl+B hide sidebar  Ctrl+O switch  Ctrl+F find  ? help
