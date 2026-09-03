@@ -268,6 +268,106 @@ fn a_theme_that_disappears_leaves_the_running_one_alone() {
     assert!(app.status.message.is_some());
 }
 
+#[test]
+fn m_t_cycles_through_the_built_in_themes_and_back() {
+    let root = scratch("cycle");
+    let mut app = app_from(&Config::defaults(), &root);
+
+    assert_eq!(app.available_themes(), ["dark", "light", "high-contrast"]);
+    assert_eq!(app.theme.name, "dark");
+
+    for expected in ["light", "high-contrast", "dark"] {
+        app.update(Action::CycleTheme);
+        assert_eq!(app.theme.name, expected);
+        assert_eq!(
+            app.status.message.as_ref().map(|(m, _)| m.clone()),
+            Some(format!("Theme: {expected}"))
+        );
+    }
+}
+
+#[test]
+fn a_user_theme_joins_the_cycle_after_the_built_ins() {
+    let root = scratch("cycle-user");
+    let themes = root.join("themes");
+    std::fs::create_dir_all(&themes).unwrap();
+    for name in ["zebra", "amber"] {
+        std::fs::write(
+            themes.join(format!("{name}.toml")),
+            "[markdown]\nh1 = { fg = \"red\" }\n",
+        )
+        .unwrap();
+    }
+
+    let mut config = Config::defaults();
+    config.theme.dir.clone_from(&themes);
+    let mut app = app_from(&config, &root);
+
+    // Alphabetical, because a directory's read order is not stable and the
+    // cycle has to be.
+    assert_eq!(
+        app.available_themes(),
+        ["dark", "light", "high-contrast", "amber", "zebra"]
+    );
+
+    for expected in ["light", "high-contrast", "amber", "zebra", "dark"] {
+        app.update(Action::CycleTheme);
+        assert_eq!(app.theme.name, expected);
+    }
+}
+
+/// The watcher re-reads `theme.name`, so a switch has to move it — otherwise
+/// editing the theme on screen reloads the previous one over the top.
+#[test]
+fn switching_theme_moves_what_the_watcher_reloads() {
+    let root = scratch("cycle-watch");
+    let mut app = app_from(&Config::defaults(), &root);
+
+    app.update(Action::CycleTheme);
+    assert_eq!(app.theme.name, "light");
+    assert_eq!(app.theme_config.name, "light");
+
+    app.update(Action::ReloadTheme);
+    assert_eq!(app.theme.name, "light", "the reload went back to `dark`");
+}
+
+#[test]
+fn a_switched_theme_comes_back_next_run() {
+    let root = scratch("cycle-session");
+
+    let mut app = app_from(&Config::defaults(), &root);
+    app.update(Action::CycleTheme);
+    app.update(Action::CycleTheme);
+    assert_eq!(app.theme.name, "high-contrast");
+    app.save_session();
+
+    let mut next = app_from(&Config::defaults(), &root);
+    assert_eq!(next.theme.name, "dark", "before the session is read");
+
+    next.restore_session();
+    assert_eq!(next.theme.name, "high-contrast");
+    assert_eq!(next.theme_config.name, "high-contrast");
+}
+
+/// `--theme` is a decision about this run, and the session must not undo it.
+#[test]
+fn an_explicit_theme_flag_beats_the_session() {
+    let root = scratch("cycle-pinned");
+
+    let mut app = app_from(&Config::defaults(), &root);
+    app.update(Action::CycleTheme);
+    app.save_session();
+
+    let mut config = Config::defaults();
+    config.theme.name = "high-contrast".to_string();
+    let mut pinned = app_from(&config, &root);
+    pinned.theme = perga::theme::Theme::builtin("high-contrast").unwrap();
+    pinned.theme_pinned = true;
+
+    pinned.restore_session();
+    assert_eq!(pinned.theme.name, "high-contrast");
+}
+
 // -- Sessions ----------------------------------------------------------------
 
 #[test]

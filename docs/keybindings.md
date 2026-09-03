@@ -41,6 +41,7 @@ every key except `Esc`, which closes it, and `Ctrl+C`, which always quits.
 | `m 3`, `Alt+3` | Sidebar mode: outline | `sidebar_mode_outline` |
 | `m 4`, `Alt+4` | Sidebar mode: links | `sidebar_mode_links` |
 | `m m` | Toggle mouse capture | `toggle_mouse` |
+| `m t` | Next theme | `cycle_theme` |
 | `Ctrl+N` | New file | `new_file` |
 | `Ctrl+O` | Quick switcher | `open_quick_switcher` |
 | `Ctrl+F` | Find in document | `open_find_in_document` |

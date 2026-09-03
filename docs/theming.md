@@ -18,6 +18,15 @@ code_theme = "base16-ocean.dark"
 
 `--theme <name>` overrides it for one run.
 
+**`m t` switches theme while perga is running**, cycling `dark`, `light`,
+`high-contrast`, and then whatever `.toml` files are in your theme directory.
+The choice is remembered for the next run on that vault — unless you started
+with `--theme`, which is a decision about *this* run and is not overwritten.
+
+`auto` is not one of the stops. It is a way of choosing a theme at startup, so
+offering it as a destination would be a stop whose meaning depends on the
+terminal.
+
 `auto` reads the `COLORFGBG` environment variable — set by rxvt, Konsole, and
 several others — and picks `dark` or `light`. Terminals that do not set it get
 `dark`.
@@ -62,9 +71,13 @@ bold headings stay bold. It is applied last and wins over everything.
 ## Writing one
 
 Put `mine.toml` in `$XDG_CONFIG_HOME/perga/themes/` and set
-`theme.name = "mine"`. perga watches that directory: save the file and the
-running application picks it up, which makes authoring a theme a matter of
-`:w` and looking at the screen.
+`theme.name = "mine"`, or reach it with `m t` — user themes join the cycle
+after the three built-ins, in alphabetical order.
+
+perga watches that directory: save the file and the running application picks
+it up, which makes authoring a theme a matter of `:w` and looking at the
+screen. `m t` is the other half of that loop — it is how you compare what you
+have written against `dark` without restarting.
 
 Start from the smallest thing that changes what you want:
 

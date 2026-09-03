@@ -274,6 +274,7 @@ fn configure(cli: &Cli, root: &Path) -> (App, Vec<String>) {
     if cli.no_gitignore {
         config.files.respect_gitignore = false;
     }
+    let theme_pinned = cli.theme.is_some();
     if let Some(name) = &cli.theme {
         config.theme.name.clone_from(name);
     }
@@ -293,6 +294,7 @@ fn configure(cli: &Cli, root: &Path) -> (App, Vec<String>) {
     app.watch_config = config.watch;
     app.session_config = config.session;
     app.theme_config = config.theme;
+    app.theme_pinned = theme_pinned;
     app.set_vault_root(root);
 
     (app, warnings)

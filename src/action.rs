@@ -52,6 +52,8 @@ pub enum Action {
     WatchStopped(String),
     /// A theme file changed, so the active theme is re-read.
     ReloadTheme,
+    /// Switch to the next theme.
+    CycleTheme,
 
     // -- Focus and chrome --------------------------------------------------
     /// Move focus to the next pane.

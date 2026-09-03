@@ -349,6 +349,7 @@ pub fn default_bindings() -> Vec<BindingSpec> {
             "Sidebar mode: links",
         ),
         b(A::ToggleMouse, Global, &["m m"], "Toggle mouse capture"),
+        b(A::CycleTheme, Global, &["m t"], "Next theme"),
         b(A::NewFile, Global, &["ctrl+n"], "New file"),
         b(A::OpenQuickSwitcher, Global, &["ctrl+o"], "Quick switcher"),
         b(

@@ -473,8 +473,16 @@ pub struct App {
     pub watch_config: WatchConfig,
     /// The `[session]` table.
     pub session_config: SessionConfig,
-    /// The `[theme]` table, kept so a session can record what was chosen.
+    /// The `[theme]` table. Its `name` follows a runtime switch, so the file
+    /// watcher re-reads whichever theme is showing rather than the one that
+    /// was configured.
     pub theme_config: ThemeConfig,
+    /// Whether `--theme` was given, which pins the theme for this run.
+    ///
+    /// A session records the theme so a runtime switch survives a restart, and
+    /// a flag on the command line is a deliberate choice for *this* run that
+    /// the session must not override.
+    pub theme_pinned: bool,
     /// The running watch. Dropping it stops watching.
     watch: Option<crate::vault::watch::WatchHandle>,
     /// The watch on the theme directory, for hot reload while authoring one.
@@ -560,6 +568,7 @@ impl App {
             watch_config: WatchConfig::default(),
             session_config: SessionConfig::default(),
             theme_config: ThemeConfig::default(),
+            theme_pinned: false,
             watch: None,
             theme_watch: None,
             search: SearchState::default(),
@@ -786,6 +795,7 @@ impl App {
             Action::FilesRemoved(paths) => self.files_removed(&paths),
             Action::WatchStopped(reason) => self.status.set(reason, Severity::Warning),
             Action::ReloadTheme => self.reload_theme(),
+            Action::CycleTheme => self.cycle_theme(),
             Action::VaultWalkFailed(reason) => self.status.set(reason, Severity::Error),
 
             // -- Sidebar ---------------------------------------------------
@@ -2352,6 +2362,21 @@ impl App {
         self.recent = session.recent;
         self.recent.truncate(self.session_config.max_recent);
 
+        // Section 9.10: the last theme, when it was chosen at runtime. A
+        // `--theme` on the command line is this run's choice and wins.
+        if let Some(name) = session.theme.filter(|_| !self.theme_pinned) {
+            if name != self.theme.name {
+                let dir = self.theme_dir();
+                let mut warnings = Vec::new();
+                let theme = Theme::resolve(&name, dir.as_deref(), &mut warnings);
+
+                if warnings.is_empty() {
+                    self.theme_config.name = name;
+                    self.apply_theme(theme);
+                }
+            }
+        }
+
         let mut restored = Vec::new();
         for saved in &session.tabs {
             let absolute = self.vault.absolute(&saved.path);
@@ -2443,6 +2468,89 @@ impl App {
         ));
     }
 
+    /// Every theme that can be switched to, in the order `m t` visits them.
+    ///
+    /// The three built-ins first, then whatever is in the theme directory, so
+    /// the order is stable and a reader who has written none still has three
+    /// to cycle. `auto` is not a stop: it is a way of *choosing* a theme at
+    /// startup, and offering it as a destination would be a stop whose meaning
+    /// depends on the terminal.
+    pub fn available_themes(&self) -> Vec<String> {
+        let mut names: Vec<String> = crate::theme::builtin::ALL
+            .iter()
+            .map(|(name, _)| (*name).to_string())
+            .collect();
+
+        let Some(dir) = self.theme_dir() else {
+            return names;
+        };
+
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return names;
+        };
+
+        let mut mine: Vec<String> = entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|e| e == "toml"))
+            .filter_map(|path| path.file_stem()?.to_str().map(str::to_string))
+            .filter(|stem| !names.contains(stem))
+            .collect();
+
+        // Read order from a directory is not stable; the cycle must be.
+        mine.sort();
+        names.extend(mine);
+        names
+    }
+
+    /// Switch to the next theme.
+    fn cycle_theme(&mut self) {
+        let names = self.available_themes();
+        if names.is_empty() {
+            return;
+        }
+
+        // Wherever the current theme sits in the list, the next one follows;
+        // a theme that is not in the list at all starts the cycle over.
+        let next = names
+            .iter()
+            .position(|name| *name == self.theme.name)
+            .map_or(0, |at| (at + 1) % names.len());
+
+        let wanted = names[next].clone();
+        let dir = self.theme_dir();
+        let mut warnings = Vec::new();
+        let mut theme = Theme::resolve(&wanted, dir.as_deref(), &mut warnings);
+
+        if let Some(warning) = warnings.first() {
+            self.status.set(warning.clone(), Severity::Warning);
+            return;
+        }
+
+        if theme.code_theme.is_none() {
+            theme.code_theme = Some(self.theme_config.code_theme.clone());
+        }
+
+        // The watcher re-reads `theme_config.name`, so it has to follow the
+        // switch or editing the showing theme would reload the previous one.
+        self.theme_config.name = wanted;
+        self.apply_theme(theme);
+
+        self.status
+            .set(format!("Theme: {}", self.theme.name), Severity::Info);
+    }
+
+    /// Install a theme and discard everything drawn with the old one.
+    fn apply_theme(&mut self, theme: Theme) {
+        self.theme = theme;
+
+        // Every cached line carries the styles it was rendered with, so a new
+        // theme means every block has to be drawn again.
+        for tab in &mut self.tabs {
+            tab.layout = RenderedDocument::new();
+        }
+    }
+
     /// Re-read the configured theme from disk.
     pub fn reload_theme(&mut self) {
         let dir = self.theme_dir();
@@ -2458,12 +2566,7 @@ impl App {
             return;
         }
 
-        self.theme = theme;
-        // Every cached line carries the styles it was rendered with, so a new
-        // theme means every block has to be drawn again.
-        for tab in &mut self.tabs {
-            tab.layout = RenderedDocument::new();
-        }
+        self.apply_theme(theme);
 
         self.status.set(
             format!("Theme reloaded: {}", self.theme.name),

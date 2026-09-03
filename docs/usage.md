@@ -133,6 +133,9 @@ they are found; a new query cancels the one running. The query is literal
 unless `search.regex` is on or it is written between slashes — `/tok[e]n/`. An
 invalid pattern is reported in the sidebar, never a crash.
 
+`m t` switches theme without restarting, cycling the three built-ins and then
+your own. The choice is remembered for the next run on that vault.
+
 `Ctrl+O` is the quick switcher: fuzzy matching over every Markdown file in the
 vault, with the matched characters highlighted. With nothing typed it lists the
 files you have opened this session, most recent first. `Ctrl+Enter` opens in a

@@ -18,6 +18,7 @@ expression: "frame(&mut app, 120, 40)"
 │           │  m 3, Alt+3                Sidebar mode: outline                                             │           │
 │           │  m 4, Alt+4                Sidebar mode: links                                               │           │
 │           │  m m                       Toggle mouse capture                                              │           │
+│           │  m t                       Next theme                                                        │           │
 │           │  Ctrl+N                    New file                                                          │           │
 │           │  Ctrl+O                    Quick switcher                                                    │           │
 │           │  Ctrl+F                    Find in document                                                  │           │
@@ -36,7 +37,6 @@ expression: "frame(&mut app, 120, 40)"
 │           │  Ctrl+U                    Scroll up half a page                                             │           │
 │           │  Space, PageDown           Scroll down a page                                                │           │
 │           │  b, PageUp                 Scroll up a page                                                  │           │
-│           │  g g                       Top of the document                                               │           │
 │           └──────────────────────────────────────────────────────────────────────────────────────────────┘           │
 │                              ││                                                                                      │
 │                              ││                                                                                      │

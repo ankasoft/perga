@@ -908,6 +908,28 @@ both themes, and the dark theme's muted grey, which read 5.81:1 as written and
 The lesson is the one D83f already half-learnt: measure the thing that reaches
 the reader, not the thing in the file.
 
+### D83h: `m t` switches theme, and the session field finally means something
+
+Section 9.10 asks the session to record "the last active theme if overridden at
+runtime". Nothing could override it at runtime: the field was written on every
+exit and read by nobody. Half a feature, and the half that was missing is the
+one a reader touches.
+
+`m t` cycles the three built-ins and then the theme directory, alphabetically —
+a directory's read order is not stable and a cycle has to be. Three decisions
+worth recording:
+
+**`auto` is not a stop.** It is a way of *choosing* a theme at startup; as a
+destination it would be a stop whose meaning depends on the terminal.
+
+**The switch moves `theme.name`, not just the resolved theme.** The file
+watcher re-reads `theme.name`, so leaving it behind would mean editing the
+theme on screen reloads the previous one over the top. There is a test.
+
+**`--theme` beats the session.** A flag on the command line is a decision about
+*this* run. The session is only allowed to restore a theme when no flag pinned
+one.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside
