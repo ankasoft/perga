@@ -103,3 +103,11 @@ man -l perga.1 | head
 
 The release workflow does the first two; the container check is worth doing by
 hand on a first release and after any dependency change that pulls in C code.
+
+## The social preview
+
+GitHub does not read the link-preview image from the repository. It is set
+once, by hand, at *Settings → General → Social preview*, and it stays set
+across releases. Nothing in CI can do it, so there is nothing here to run;
+the only reason it appears in this document is that a repository without one
+shows a generic placeholder wherever its link is posted.

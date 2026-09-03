@@ -1011,17 +1011,23 @@ a directory of the same name, with the version in the tag rather than the
 filename. The README, the PKGBUILD, and `docs/publishing.md` follow what the
 tool actually emits rather than what the specification's prose sketched.
 
-### D85: the social preview is a real frame, typeset
+### D85: the social preview is a real frame, typeset, and then not committed
 
-`tests/preview.rs` captures a 120x22 frame through the same renderer the
-application uses and writes it to `demo/social-preview-frame.txt`; two
-ImageMagick commands typeset it and overlay the wordmark. The layout, the tree,
-and the document in the image are genuinely perga's output.
+`tests/preview.rs` captured a 120x22 frame through the same renderer the
+application uses and wrote it to `demo/social-preview-frame.txt`; two
+ImageMagick commands typeset it and overlaid the wordmark. The layout, the
+tree, and the document in the image are genuinely perga's output.
 
-It is monochrome, because the capture is plain text; a photographic screenshot
-of a real terminal would carry the theme's colours and is a fine replacement.
-Both the frame and the commands are committed so the image can be regenerated
-without guessing at the geometry.
+**Reverted after the image was made.** GitHub does not read the preview from
+the repository: it is uploaded once, by hand, in the repository settings. So
+the image earned nothing by being committed, the intermediate text frame was a
+build product kept in source control, and the test that wrote it was a build
+script wearing a test's clothes. All three are gone; the image itself lives
+with its owner, and `docs/publishing.md` says where it is uploaded.
+
+The lesson is narrow but worth keeping: an asset that a service will not read
+from the repository does not belong in the repository, however reproducible
+the recipe for it is.
 
 ### D86: what could not be verified here
 
