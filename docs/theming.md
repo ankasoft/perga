@@ -32,9 +32,9 @@ several others — and picks `dark` or `light`. Terminals that do not set it get
 Both `dark` and `light` clear WCAG AA everywhere: **4.5:1 for anything that
 carries text, 3:1 for a border or a rule**, measured against the surface it is
 actually drawn on — including the selection background, because a selected row
-keeps its own foreground. A test in `src/theme/mod.rs` enforces this and names
-the key that fails, so a theme change cannot quietly make the interface
-unreadable.
+keeps its own foreground, and including the ANSI-256 palette a terminal without
+truecolour receives. Tests in `src/theme/mod.rs` enforce this and name the key
+that fails, so a theme change cannot quietly make the interface unreadable.
 
 If you write your own theme, the same test will not check it. `contrast_ratio`
 is public if you want to.
@@ -48,9 +48,13 @@ video.
 ## Colour degradation
 
 When `COLORTERM` does not claim `truecolor` or `24bit`, every `#rrggbb` value
-is mapped to its nearest ANSI-256 index — the 6×6×6 cube, or the 24-step grey
-ramp for a grey. Sending 24-bit escapes to a terminal that cannot read them
-would print them as text.
+is mapped to its nearest ANSI-256 colour, searched over the whole palette — the
+6×6×6 cube *and* the 24-step grey ramp. Sending 24-bit escapes to a terminal
+that cannot read them would print them as text.
+
+Plenty of terminals support truecolour without advertising it in `COLORTERM`,
+so this path is common. The contrast guarantee below covers it: both built-in
+themes are measured as written *and* as degraded.
 
 `NO_COLOR`, set and non-empty, drops every colour and keeps every modifier, so
 bold headings stay bold. It is applied last and wins over everything.

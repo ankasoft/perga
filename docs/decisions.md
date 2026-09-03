@@ -881,6 +881,33 @@ intensity, which undoes the contrast the colour was picked for.
 values are whatever the reader has configured, and perga cannot know them.
 That is also why it exists.
 
+### D83g: degradation searches the whole palette, and is measured
+
+The contrast fix in D83f measured the themes as written. It should have
+measured what terminals actually receive: `COLORTERM` is unset on plenty of
+them — including the one the report came from — and those get the ANSI-256
+approximation.
+
+Two problems, found by extending the test to the degraded palette.
+
+**The approximation was crude.** It decided "is this grey?" with a per-channel
+threshold and then snapped each channel to the colour cube. `#313244`, the dark
+theme's selection background, spans 19 across its channels, failed the grey
+test, and landed on `(95, 95, 95)` — twice as light as intended, which ate the
+contrast of every foreground drawn on it. The grey ramp had an entry 1 away.
+The page background `#1e1e2e` became pure black, 63 units off.
+
+It now searches all 240 palette entries by squared distance. Page background:
+63 units off, now 14. Selection: 70, now 16. 240 comparisons per colour, once
+when a theme loads.
+
+**Two colours still failed after that**, and were adjusted: `code_inline` in
+both themes, and the dark theme's muted grey, which read 5.81:1 as written and
+4.41:1 once snapped.
+
+The lesson is the one D83f already half-learnt: measure the thing that reaches
+the reader, not the thing in the file.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

@@ -19,11 +19,11 @@ status_error    = { fg = "#f38ba8" }
 selection       = { bg = "#313244" }
 scrollbar       = { fg = "#6c7086" }
 logo            = { fg = "#89b4fa", bold = true }
-logo_subtitle   = { fg = "#9399b2" }
+logo_subtitle   = { fg = "#9ba1b8" }
 
 [tabs]
 active   = { fg = "#cdd6f4", bg = "#313244", bold = true }
-inactive = { fg = "#9399b2" }
+inactive = { fg = "#9ba1b8" }
 dirty    = { fg = "#f9e2af" }
 
 [sidebar]
@@ -49,7 +49,7 @@ strong            = { bold = true }
 strikethrough     = { crossed_out = true }
 blockquote        = { fg = "#a6adc8", italic = true }
 blockquote_bar    = { fg = "#6c7086" }
-code_inline       = { fg = "#f5c2e7", bg = "#313244" }
+code_inline       = { fg = "#f5d0ec", bg = "#313244" }
 code_block_bg     = { bg = "#181825" }
 link              = { fg = "#89b4fa", underline = true }
 link_focused      = { fg = "#1e1e2e", bg = "#89b4fa" }
@@ -58,14 +58,14 @@ link_external     = { fg = "#94e2d5", underline = true }
 wikilink          = { fg = "#cba6f7", underline = true }
 list_marker       = { fg = "#fab387" }
 task_done         = { fg = "#a6e3a1" }
-task_todo         = { fg = "#9399b2" }
+task_todo         = { fg = "#9ba1b8" }
 table_border      = { fg = "#6c7086" }
 table_header      = { fg = "#cdd6f4", bold = true }
 rule              = { fg = "#6c7086" }
 footnote          = { fg = "#94e2d5" }
 image_placeholder = { fg = "#94e2d5", italic = true }
-html              = { fg = "#9399b2" }
-frontmatter       = { fg = "#9399b2" }
+html              = { fg = "#9ba1b8" }
+frontmatter       = { fg = "#9ba1b8" }
 
 [hints]
 label = { fg = "#1e1e2e", bg = "#f9e2af", bold = true }

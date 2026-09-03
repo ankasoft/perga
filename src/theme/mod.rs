@@ -365,6 +365,33 @@ impl Theme {
     }
 }
 
+/// The RGB an ANSI-256 index stands for, in the standard xterm palette.
+///
+/// Indices 0-15 are whatever the reader configured in their terminal and have
+/// no fixed value; the 6x6x6 cube and the grey ramp above them do. This is what
+/// lets the contrast test measure a degraded theme — the palette a terminal
+/// without truecolour actually receives.
+pub fn ansi256_rgb(index: u8) -> Option<Color> {
+    /// The six levels each channel of the colour cube takes.
+    const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
+
+    if index < 16 {
+        return None;
+    }
+
+    if index >= 232 {
+        let grey = 8 + 10 * (index - 232);
+        return Some(Color::Rgb(grey, grey, grey));
+    }
+
+    let cube = index - 16;
+    Some(Color::Rgb(
+        LEVELS[usize::from(cube / 36)],
+        LEVELS[usize::from((cube / 6) % 6)],
+        LEVELS[usize::from(cube % 6)],
+    ))
+}
+
 /// The style keys that draw a decoration rather than text.
 ///
 /// WCAG asks 4.5:1 of text and 3:1 of a user-interface component. A table's
@@ -384,6 +411,13 @@ pub const DECORATION_KEYS: &[&str] = &[
 /// terminal's palette says it is, which perga cannot know.
 pub fn contrast_ratio(a: Color, b: Color) -> Option<f64> {
     let luminance = |color: Color| -> Option<f64> {
+        // An indexed colour above 15 has a fixed value, so it can be measured
+        // too; that is what covers a theme after `degrade_to_256`.
+        let color = match color {
+            Color::Indexed(i) => ansi256_rgb(i)?,
+            other => other,
+        };
+
         let Color::Rgb(r, g, b) = color else {
             return None;
         };
@@ -406,45 +440,39 @@ pub fn contrast_ratio(a: Color, b: Color) -> Option<f64> {
     Some((hi + 0.05) / (lo + 0.05))
 }
 
-/// The nearest ANSI-256 index to a truecolour value.
+/// The nearest ANSI-256 colour to a truecolour value.
 ///
-/// The 6×6×6 colour cube and the 24-step grey ramp, whichever is closer. Only
+/// Searched over the whole palette — the 6x6x6 cube *and* the 24-step grey
+/// ramp — rather than snapping each channel to the cube. Snapping is what a
+/// first version did, and it is wrong in a way that shows: `#313244`, the dark
+/// theme's selection background, is 19 apart across its channels, fails a
+/// "is this grey?" threshold, and lands on `(95, 95, 95)` — twice as light as
+/// it should be, which then eats the contrast of every foreground drawn on it.
+/// The grey ramp had an entry 1 away.
+///
+/// 240 candidates, compared once per colour when a theme loads. Only
 /// `Color::Rgb` is touched; a named or indexed colour already means something
 /// on a 256-colour terminal.
-fn nearest_256(color: ratatui::style::Color) -> ratatui::style::Color {
-    use ratatui::style::Color;
-
+fn nearest_256(color: Color) -> Color {
     let Color::Rgb(r, g, b) = color else {
         return color;
     };
 
-    // A grey is better served by the ramp than by the cube, which only has six
-    // steps per channel and would visibly tint it.
-    let grey_level = (u16::from(r) + u16::from(g) + u16::from(b)) / 3;
-    let is_grey = r.abs_diff(g) < 10 && g.abs_diff(b) < 10 && r.abs_diff(b) < 10;
-
-    if is_grey {
-        if grey_level < 4 {
-            return Color::Indexed(16);
+    let distance = |c: Color| match c {
+        // Squared euclidean distance in RGB. Not perceptually uniform, but
+        // the palette is coarse enough that a better metric changes nothing
+        // a reader would notice.
+        Color::Rgb(cr, cg, cb) => {
+            let d = |a: u8, b: u8| i32::from(a).abs_diff(i32::from(b)) as i32;
+            d(r, cr).pow(2) + d(g, cg).pow(2) + d(b, cb).pow(2)
         }
-        if grey_level > 246 {
-            return Color::Indexed(231);
-        }
-        let step = ((grey_level - 8) / 10).min(23) as u8;
-        return Color::Indexed(232 + step);
-    }
-
-    let index = |v: u8| -> u16 {
-        // The cube's levels are 0, 95, 135, 175, 215, 255.
-        const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
-        LEVELS
-            .iter()
-            .enumerate()
-            .min_by_key(|(_, level)| level.abs_diff(v))
-            .map_or(0, |(at, _)| at as u16)
+        _ => i32::MAX,
     };
 
-    Color::Indexed((16 + 36 * index(r) + 6 * index(g) + index(b)) as u8)
+    (16u8..=255)
+        .filter_map(|index| ansi256_rgb(index).map(|c| (index, distance(c))))
+        .min_by_key(|(_, d)| *d)
+        .map_or(color, |(index, _)| Color::Indexed(index))
 }
 
 #[cfg(test)]
@@ -631,31 +659,47 @@ mod tests {
     #[test]
     fn the_truecolour_themes_are_readable() {
         for name in ["dark", "light"] {
-            let theme = Theme::builtin(name).expect("a built-in theme");
-            let page = theme.ui.background.bg.expect("a theme paints its ground");
+            for (how, theme) in variants(name) {
+                let theme = &theme;
+                let page = theme.ui.background.bg.expect("a theme paints its ground");
 
-            for (key, style) in theme.named_styles() {
-                let Some(fg) = style.fg else { continue };
-                // A key with its own background is read against that.
-                let surface = style.bg.unwrap_or(page);
+                for (key, style) in theme.named_styles() {
+                    let Some(fg) = style.fg else { continue };
+                    // A key with its own background is read against that.
+                    let surface = style.bg.unwrap_or(page);
 
-                let Some(ratio) = contrast_ratio(fg, surface) else {
-                    continue;
-                };
+                    let Some(ratio) = contrast_ratio(fg, surface) else {
+                        continue;
+                    };
 
-                let wanted = if DECORATION_KEYS.contains(&key) {
-                    3.0
-                } else {
-                    4.5
-                };
+                    let wanted = if DECORATION_KEYS.contains(&key) {
+                        3.0
+                    } else {
+                        4.5
+                    };
 
-                assert!(
-                    ratio >= wanted,
-                    "`{name}` theme: `{key}` is {ratio:.2}:1 against its \
+                    assert!(
+                        ratio >= wanted,
+                        "`{name}` theme{how}: `{key}` is {ratio:.2}:1 against its \
                      background, needs {wanted}:1"
-                );
+                    );
+                }
             }
         }
+    }
+
+    /// A theme as it is, and as a terminal without truecolour receives it.
+    ///
+    /// The second matters as much as the first: `COLORTERM` is unset on plenty
+    /// of terminals, and the degraded palette is what those readers see. It is
+    /// also where `code_inline` was still failing after the first pass — 8.23:1
+    /// as written, 3.76:1 once snapped to the colour cube.
+    fn variants(name: &str) -> Vec<(&'static str, Theme)> {
+        let theme = Theme::builtin(name).expect("a built-in theme");
+        let mut degraded = theme.clone();
+        degraded.degrade_to_256();
+
+        vec![("", theme), (" degraded to ANSI-256", degraded)]
     }
 
     /// Text drawn on a selected row keeps its own foreground, so the selection
@@ -663,26 +707,28 @@ mod tests {
     #[test]
     fn text_stays_readable_on_a_selected_row() {
         for name in ["dark", "light"] {
-            let theme = Theme::builtin(name).expect("a built-in theme");
-            let Some(selection) = theme.ui.selection.bg else {
-                continue;
-            };
-
-            for (key, style) in theme.sidebar.named() {
-                let Some(fg) = style.fg else { continue };
-                // These two paint their own background over the selection.
-                if key == "mode_active" || style.bg.is_some() {
-                    continue;
-                }
-
-                let Some(ratio) = contrast_ratio(fg, selection) else {
+            for (how, theme) in variants(name) {
+                let Some(selection) = theme.ui.selection.bg else {
                     continue;
                 };
 
-                assert!(
-                    ratio >= 4.5,
-                    "`{name}` theme: `{key}` is {ratio:.2}:1 on a selected row"
-                );
+                for (key, style) in theme.sidebar.named() {
+                    let Some(fg) = style.fg else { continue };
+                    // These two paint their own background over the selection.
+                    if key == "mode_active" || style.bg.is_some() {
+                        continue;
+                    }
+
+                    let Some(ratio) = contrast_ratio(fg, selection) else {
+                        continue;
+                    };
+
+                    assert!(
+                        ratio >= 4.5,
+                        "`{name}` theme{how}: `{key}` is {ratio:.2}:1 on a \
+                     selected row"
+                    );
+                }
             }
         }
     }
@@ -697,8 +743,21 @@ mod tests {
         assert!((contrast_ratio(white, white).unwrap() - 1.0).abs() < 0.001);
         // Order does not matter.
         assert_eq!(contrast_ratio(white, black), contrast_ratio(black, white));
-        // A colour the terminal owns cannot be measured.
+        // A colour the terminal owns cannot be measured; an indexed one above
+        // 15 has a fixed value and can be.
         assert_eq!(contrast_ratio(Color::Red, black), None);
+        assert_eq!(contrast_ratio(Color::Indexed(7), black), None);
+        assert!(contrast_ratio(Color::Indexed(231), black).unwrap() > 20.0);
+    }
+
+    #[test]
+    fn the_ansi_256_palette_is_the_standard_one() {
+        assert_eq!(ansi256_rgb(15), None, "0-15 belong to the terminal");
+        assert_eq!(ansi256_rgb(16), Some(Color::Rgb(0, 0, 0)));
+        assert_eq!(ansi256_rgb(231), Some(Color::Rgb(255, 255, 255)));
+        assert_eq!(ansi256_rgb(196), Some(Color::Rgb(255, 0, 0)));
+        assert_eq!(ansi256_rgb(232), Some(Color::Rgb(8, 8, 8)));
+        assert_eq!(ansi256_rgb(255), Some(Color::Rgb(238, 238, 238)));
     }
 
     #[test]
