@@ -3,12 +3,13 @@ name = "light"
 code_theme = "InspiredGitHub"
 
 # A genuinely light palette rather than an inversion of `dark`. Body text
-# (#1c1e26 on #fdfdfb) is 15.8:1, and no foreground listed here falls below
-# 4.5:1 against the surface it is drawn on.
+# (#1c1e26 on #fdfdfb) is 15.8:1. Every foreground clears WCAG AA against the
+# surface it is drawn on: 4.5:1 for anything that is text, 3:1 for a border or
+# a rule. The test in src/theme/mod.rs enforces it.
 
 [ui]
 background      = { bg = "#fdfdfb" }
-border          = { fg = "#b4b0a8" }
+border          = { fg = "#949087" }
 border_focused  = { fg = "#1a5fb4" }
 title           = { fg = "#1c1e26", bold = true }
 status_bar      = { fg = "#4a4d57", bg = "#eeece6" }
@@ -16,7 +17,7 @@ status_mode     = { fg = "#fdfdfb", bg = "#1a5fb4", bold = true }
 status_warning  = { fg = "#8a5000" }
 status_error    = { fg = "#a51d2d" }
 selection       = { bg = "#dfe6f2" }
-scrollbar       = { fg = "#b4b0a8" }
+scrollbar       = { fg = "#949087" }
 logo            = { fg = "#1a5fb4", bold = true }
 logo_subtitle   = { fg = "#6b6e78" }
 
@@ -29,11 +30,11 @@ dirty    = { fg = "#8a5000" }
 directory     = { fg = "#1a5fb4", bold = true }
 file          = { fg = "#1c1e26" }
 file_active   = { fg = "#0f6b34", bold = true }
-file_other    = { fg = "#6b6e78" }
+file_other    = { fg = "#5d606a" }
 mode_active   = { fg = "#fdfdfb", bg = "#1a5fb4", bold = true }
-mode_inactive = { fg = "#6b6e78" }
+mode_inactive = { fg = "#5d606a" }
 match         = { fg = "#8a5000", bold = true }
-line_number   = { fg = "#8b8e98" }
+line_number   = { fg = "#5d606a" }
 
 [markdown]
 h1 = { fg = "#a51d2d", bold = true }
@@ -47,7 +48,7 @@ emphasis          = { italic = true }
 strong            = { bold = true }
 strikethrough     = { crossed_out = true }
 blockquote        = { fg = "#4a4d57", italic = true }
-blockquote_bar    = { fg = "#b4b0a8" }
+blockquote_bar    = { fg = "#949087" }
 code_inline       = { fg = "#8f3f71", bg = "#f0eee8" }
 code_block_bg     = { bg = "#f4f2ec" }
 link              = { fg = "#1a5fb4", underline = true }
@@ -58,9 +59,9 @@ wikilink          = { fg = "#6c3fa8", underline = true }
 list_marker       = { fg = "#8a5000" }
 task_done         = { fg = "#0f6b34" }
 task_todo         = { fg = "#6b6e78" }
-table_border      = { fg = "#b4b0a8" }
+table_border      = { fg = "#949087" }
 table_header      = { fg = "#1c1e26", bold = true }
-rule              = { fg = "#b4b0a8" }
+rule              = { fg = "#949087" }
 footnote          = { fg = "#00707a" }
 image_placeholder = { fg = "#00707a", italic = true }
 html              = { fg = "#6b6e78", dim = true }

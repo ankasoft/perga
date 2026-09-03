@@ -855,6 +855,32 @@ bindings — `Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the rest — which is the intended
 trade: `Ctrl+W` deleting a word matters more inside a buffer than closing a
 tab, and `Ctrl+C` is handled before the keymap, so there is always a way out.
 
+### D83f: every theme colour is held to WCAG AA, by a test
+
+Reported from real use: "I had trouble reading the text in the dark theme."
+Measured, and they were right — thirteen keys of the default theme sat at
+3.36:1 or below, three of them with `dim` on top of that. Body text was fine
+at 12:1; it was everything *around* the document that could not be read: the
+sidebar's mode row, the path in the title bar, inactive tab labels, search
+result line numbers, unchecked task items, and every "nothing here" line.
+
+Section 11.2 asked for 4.5:1 only of the `light` theme's body text. That was
+too narrow a rule, and the gap it left is exactly what shipped.
+
+Both truecolour themes now clear **4.5:1 for anything carrying text and 3:1
+for a border or a rule** — the WCAG AA thresholds for text and for a
+user-interface component. Two tests enforce it and name the offending key:
+one against each style's own surface, one against the selection background,
+because a selected row keeps its own foreground. The second caught four keys
+the first did not, all sitting between 4.06 and 4.45.
+
+`dim` is gone from the muted colours. On most terminals it halves the
+intensity, which undoes the contrast the colour was picked for.
+
+`high-contrast` is not measured: its colours are the sixteen ANSI names, whose
+values are whatever the reader has configured, and perga cannot know them.
+That is also why it exists.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

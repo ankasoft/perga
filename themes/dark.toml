@@ -1,10 +1,15 @@
 name = "dark"
+# Every foreground here clears WCAG AA against the surface it is drawn on:
+# 4.5:1 for anything that is text, 3:1 for a border or a rule. The test in
+# src/theme/mod.rs enforces it. `dim` is deliberately absent from the muted
+# colours — on most terminals it halves the intensity and undoes the contrast
+# the colour was chosen for.
 # Which syntect theme to use for fenced code blocks; overrides theme.code_theme.
 code_theme = "base16-ocean.dark"
 
 [ui]
 background      = { bg = "#1e1e2e" }
-border          = { fg = "#45475a" }
+border          = { fg = "#6c7086" }
 border_focused  = { fg = "#89b4fa" }
 title           = { fg = "#cdd6f4", bold = true }
 status_bar      = { fg = "#a6adc8", bg = "#181825" }
@@ -12,24 +17,24 @@ status_mode     = { fg = "#1e1e2e", bg = "#89b4fa", bold = true }
 status_warning  = { fg = "#f9e2af" }
 status_error    = { fg = "#f38ba8" }
 selection       = { bg = "#313244" }
-scrollbar       = { fg = "#45475a" }
+scrollbar       = { fg = "#6c7086" }
 logo            = { fg = "#89b4fa", bold = true }
-logo_subtitle   = { fg = "#6c7086" }
+logo_subtitle   = { fg = "#9399b2" }
 
 [tabs]
 active   = { fg = "#cdd6f4", bg = "#313244", bold = true }
-inactive = { fg = "#6c7086" }
+inactive = { fg = "#9399b2" }
 dirty    = { fg = "#f9e2af" }
 
 [sidebar]
 directory     = { fg = "#89b4fa", bold = true }
 file          = { fg = "#cdd6f4" }
 file_active   = { fg = "#a6e3a1", bold = true }
-file_other    = { fg = "#6c7086", dim = true }
+file_other    = { fg = "#a6adc8" }
 mode_active   = { fg = "#1e1e2e", bg = "#89b4fa", bold = true }
-mode_inactive = { fg = "#6c7086" }
+mode_inactive = { fg = "#a6adc8" }
 match         = { fg = "#f9e2af", bold = true }
-line_number   = { fg = "#6c7086" }
+line_number   = { fg = "#a6adc8" }
 
 [markdown]
 h1 = { fg = "#f38ba8", bold = true }
@@ -43,7 +48,7 @@ emphasis          = { italic = true }
 strong            = { bold = true }
 strikethrough     = { crossed_out = true }
 blockquote        = { fg = "#a6adc8", italic = true }
-blockquote_bar    = { fg = "#585b70" }
+blockquote_bar    = { fg = "#6c7086" }
 code_inline       = { fg = "#f5c2e7", bg = "#313244" }
 code_block_bg     = { bg = "#181825" }
 link              = { fg = "#89b4fa", underline = true }
@@ -53,14 +58,14 @@ link_external     = { fg = "#94e2d5", underline = true }
 wikilink          = { fg = "#cba6f7", underline = true }
 list_marker       = { fg = "#fab387" }
 task_done         = { fg = "#a6e3a1" }
-task_todo         = { fg = "#6c7086" }
-table_border      = { fg = "#45475a" }
+task_todo         = { fg = "#9399b2" }
+table_border      = { fg = "#6c7086" }
 table_header      = { fg = "#cdd6f4", bold = true }
-rule              = { fg = "#45475a" }
+rule              = { fg = "#6c7086" }
 footnote          = { fg = "#94e2d5" }
 image_placeholder = { fg = "#94e2d5", italic = true }
-html              = { fg = "#6c7086", dim = true }
-frontmatter       = { fg = "#6c7086", dim = true }
+html              = { fg = "#9399b2" }
+frontmatter       = { fg = "#9399b2" }
 
 [hints]
 label = { fg = "#1e1e2e", bg = "#f9e2af", bold = true }

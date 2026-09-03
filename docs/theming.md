@@ -27,8 +27,17 @@ several others — and picks `dark` or `light`. Terminals that do not set it get
 **`dark`** is the default and the base every other theme inherits from.
 
 **`light`** is a genuinely light palette rather than an inversion. Body text is
-`#1c1e26` on `#fdfdfb`, a contrast ratio of 15.8:1, and no foreground in it
-falls below 4.5:1 against the surface it is drawn on.
+`#1c1e26` on `#fdfdfb`, a contrast ratio of 15.8:1.
+
+Both `dark` and `light` clear WCAG AA everywhere: **4.5:1 for anything that
+carries text, 3:1 for a border or a rule**, measured against the surface it is
+actually drawn on — including the selection background, because a selected row
+keeps its own foreground. A test in `src/theme/mod.rs` enforces this and names
+the key that fails, so a theme change cannot quietly make the interface
+unreadable.
+
+If you write your own theme, the same test will not check it. `contrast_ratio`
+is public if you want to.
 
 **`high-contrast`** uses the sixteen ANSI colours and nothing else, so it
 renders identically on a terminal with no 256-colour or truecolour support and

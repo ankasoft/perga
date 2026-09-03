@@ -8,7 +8,7 @@
 pub mod builtin;
 pub mod schema;
 
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 use serde::Deserialize;
 
 use crate::theme::schema::StyleDef;
@@ -43,6 +43,13 @@ macro_rules! theme_group {
             /// Apply `f` to every style in the group.
             fn map_styles(&mut self, f: &mut impl FnMut(Style) -> Style) {
                 $(self.$key = f(self.$key);)*
+            }
+
+            /// Every style in the group, with the name it is written under in
+            /// a theme file. For the tests that have to say *which* key is
+            /// wrong.
+            pub fn named(&self) -> Vec<(&'static str, Style)> {
+                vec![$((stringify!($key), self.$key),)*]
             }
         }
     };
@@ -235,6 +242,16 @@ impl Theme {
         self.hints.merge(&file.hints);
     }
 
+    /// Every style in the theme, with the name it is written under.
+    pub fn named_styles(&self) -> Vec<(&'static str, Style)> {
+        let mut out = self.ui.named();
+        out.extend(self.tabs.named());
+        out.extend(self.sidebar.named());
+        out.extend(self.markdown.named());
+        out.extend(self.hints.named());
+        out
+    }
+
     /// Visit every style in the theme, for the tests that assert across all
     /// of them at once.
     pub fn for_each_style(&self, f: &mut impl FnMut(Style)) {
@@ -346,6 +363,47 @@ impl Theme {
             ..style
         });
     }
+}
+
+/// The style keys that draw a decoration rather than text.
+///
+/// WCAG asks 4.5:1 of text and 3:1 of a user-interface component. A table's
+/// border and a horizontal rule are components; everything else here carries
+/// something a reader has to read.
+pub const DECORATION_KEYS: &[&str] = &[
+    "border",
+    "scrollbar",
+    "table_border",
+    "rule",
+    "blockquote_bar",
+];
+
+/// The contrast ratio between two colours, per WCAG 2.
+///
+/// Only meaningful for `Color::Rgb`; a named or indexed colour is whatever the
+/// terminal's palette says it is, which perga cannot know.
+pub fn contrast_ratio(a: Color, b: Color) -> Option<f64> {
+    let luminance = |color: Color| -> Option<f64> {
+        let Color::Rgb(r, g, b) = color else {
+            return None;
+        };
+
+        let channel = |v: u8| {
+            let v = f64::from(v) / 255.0;
+            if v <= 0.03928 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+
+        Some(0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b))
+    };
+
+    let (a, b) = (luminance(a)?, luminance(b)?);
+    let (hi, lo) = if a > b { (a, b) } else { (b, a) };
+
+    Some((hi + 0.05) / (lo + 0.05))
 }
 
 /// The nearest ANSI-256 index to a truecolour value.
@@ -557,6 +615,90 @@ mod tests {
         // A colour that already means something is left alone.
         assert_eq!(nearest_256(Color::Red), Color::Red);
         assert_eq!(nearest_256(Color::Indexed(42)), Color::Indexed(42));
+    }
+
+    /// Section 11.2 asks the `light` theme for 4.5:1 on body text. The same
+    /// standard belongs on every theme and on every key: the first person to
+    /// run the released binary could read the documents and not the interface
+    /// around them, because thirteen keys of the default theme sat at 3.36:1.
+    ///
+    /// 4.5:1 for anything that carries text, 3:1 for a border or a rule, which
+    /// is what WCAG asks of a user-interface component.
+    ///
+    /// `high-contrast` is not checked: its colours are the sixteen ANSI names,
+    /// whose actual values are whatever the reader configured in their
+    /// terminal, and perga cannot know them.
+    #[test]
+    fn the_truecolour_themes_are_readable() {
+        for name in ["dark", "light"] {
+            let theme = Theme::builtin(name).expect("a built-in theme");
+            let page = theme.ui.background.bg.expect("a theme paints its ground");
+
+            for (key, style) in theme.named_styles() {
+                let Some(fg) = style.fg else { continue };
+                // A key with its own background is read against that.
+                let surface = style.bg.unwrap_or(page);
+
+                let Some(ratio) = contrast_ratio(fg, surface) else {
+                    continue;
+                };
+
+                let wanted = if DECORATION_KEYS.contains(&key) {
+                    3.0
+                } else {
+                    4.5
+                };
+
+                assert!(
+                    ratio >= wanted,
+                    "`{name}` theme: `{key}` is {ratio:.2}:1 against its \
+                     background, needs {wanted}:1"
+                );
+            }
+        }
+    }
+
+    /// Text drawn on a selected row keeps its own foreground, so the selection
+    /// background is a surface too.
+    #[test]
+    fn text_stays_readable_on_a_selected_row() {
+        for name in ["dark", "light"] {
+            let theme = Theme::builtin(name).expect("a built-in theme");
+            let Some(selection) = theme.ui.selection.bg else {
+                continue;
+            };
+
+            for (key, style) in theme.sidebar.named() {
+                let Some(fg) = style.fg else { continue };
+                // These two paint their own background over the selection.
+                if key == "mode_active" || style.bg.is_some() {
+                    continue;
+                }
+
+                let Some(ratio) = contrast_ratio(fg, selection) else {
+                    continue;
+                };
+
+                assert!(
+                    ratio >= 4.5,
+                    "`{name}` theme: `{key}` is {ratio:.2}:1 on a selected row"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_contrast_ratio_matches_the_wcag_definition() {
+        let white = Color::Rgb(0xff, 0xff, 0xff);
+        let black = Color::Rgb(0, 0, 0);
+
+        // The two extremes of the scale, exactly.
+        assert!((contrast_ratio(white, black).unwrap() - 21.0).abs() < 0.001);
+        assert!((contrast_ratio(white, white).unwrap() - 1.0).abs() < 0.001);
+        // Order does not matter.
+        assert_eq!(contrast_ratio(white, black), contrast_ratio(black, white));
+        // A colour the terminal owns cannot be measured.
+        assert_eq!(contrast_ratio(Color::Red, black), None);
     }
 
     #[test]
