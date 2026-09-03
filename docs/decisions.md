@@ -953,6 +953,24 @@ Neither shows up in a text snapshot, because the snapshot helper trims trailing
 spaces — which is why both survived to a released version. The unit tests
 assert the styles.
 
+### D83j: a block quote is drawn with a bar
+
+The third theme key that existed, was documented, and was used by nothing —
+after `rule` and alongside it. `tui-markdown` passes a quote's `>` through as
+the character that was typed, and `blockquote_bar` was named for a bar that
+was never drawn.
+
+The bar is put back **after** wrapping, not before. A quote is drawn with a bar
+rather than a prefix precisely so the mark runs down the whole quote; marking
+only the first rendered line would be the prefix again, badly. Nesting adds a
+bar per level, and the content is wrapped into what is left.
+
+Inline markup was checked at the same time and was already right: `**bold**`,
+`*italic*`, `~~struck~~`, `` `code` `` and links all render styled with their
+markers hidden. What still shows is `#` on headings — which the specification's
+own layout sketch in Section 8.1 draws that way, so it stays until someone asks
+otherwise.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

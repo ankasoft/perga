@@ -231,6 +231,9 @@ impl LineMap {
 /// The character a thematic break is drawn with.
 const RULE_GLYPH: char = '─';
 
+/// The character a block quote's left edge is drawn with.
+const BLOCKQUOTE_BAR: char = '│';
+
 /// The key a rendered block is cached under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct CacheKey {
@@ -560,6 +563,7 @@ pub struct Renderer {
     code_theme: String,
     code_block_bg: Style,
     rule: Style,
+    blockquote_bar: Style,
     text: Style,
     task_done: Style,
     task_todo: Style,
@@ -579,6 +583,7 @@ impl Renderer {
                 .unwrap_or_else(|| FALLBACK_CODE_THEME.to_string()),
             code_block_bg: theme.markdown.code_block_bg,
             rule: theme.markdown.rule,
+            blockquote_bar: theme.markdown.blockquote_bar,
             text: theme.markdown.text,
             task_done: theme.markdown.task_done,
             task_todo: theme.markdown.task_todo,
@@ -630,6 +635,10 @@ impl Renderer {
                 .collect();
         }
 
+        if block.kind == BlockKind::BlockQuote {
+            return with_trailing_blank(self.render_quote_bars(lines, width));
+        }
+
         if !block.kind.is_clipped() {
             lines = lines
                 .into_iter()
@@ -638,6 +647,46 @@ impl Renderer {
         }
 
         with_trailing_blank(lines)
+    }
+
+    /// Draw a block quote's `>` markers as a bar down its left edge.
+    ///
+    /// `tui-markdown` passes the markers through as the characters that were
+    /// typed, one span each. The theme has had a `blockquote_bar` key since
+    /// the first version and nothing used it.
+    ///
+    /// The bar is put back *after* wrapping, so it runs down every line of a
+    /// quote rather than marking only the first — which is the whole reason a
+    /// quote is drawn with a bar rather than a prefix.
+    fn render_quote_bars(&self, lines: Vec<Line<'static>>, width: u16) -> Vec<Line<'static>> {
+        let mut out = Vec::with_capacity(lines.len());
+
+        for line in lines {
+            // Every leading `>` is one level of nesting. A space after them is
+            // the separator `tui-markdown` emits, not content.
+            let depth = line
+                .spans
+                .iter()
+                .take_while(|span| span.content.as_ref() == ">")
+                .count();
+
+            let mut rest: Vec<Span<'static>> = line.spans.into_iter().skip(depth).collect();
+            if depth > 0 && rest.first().is_some_and(|s| s.content.as_ref() == " ") {
+                rest.remove(0);
+            }
+
+            let indent: String = format!("{BLOCKQUOTE_BAR} ").repeat(depth.max(1));
+            let inner = usize::from(width).saturating_sub(indent.chars().count());
+
+            for mut wrapped in wrap_line(Line::from(rest).style(line.style), inner as u16) {
+                wrapped
+                    .spans
+                    .insert(0, Span::styled(indent.clone(), self.blockquote_bar));
+                out.push(wrapped);
+            }
+        }
+
+        out
     }
 
     /// Render a thematic break.
@@ -1512,5 +1561,74 @@ mod tests {
             .expect("the code line");
 
         assert_eq!(code.chars().count(), 26);
+    }
+
+    /// `tui-markdown` passes a quote's `>` through as the character that was
+    /// typed. The theme has had a `blockquote_bar` key since the first version
+    /// and nothing used it.
+    #[test]
+    fn a_block_quote_is_drawn_with_a_bar() {
+        let text = render_all("> quoted\n", 30);
+        let quote = text.iter().find(|l| l.contains("quoted")).expect("a quote");
+
+        assert!(quote.starts_with('│'), "{quote:?}");
+        assert!(!quote.contains('>'), "the markup is not shown: {quote:?}");
+    }
+
+    /// The bar is what a quote is drawn with instead of a prefix, so it has to
+    /// run down every line — putting it back before wrapping would mark only
+    /// the first.
+    #[test]
+    fn the_bar_runs_down_a_wrapped_quote() {
+        let source = "> one two three four five six seven eight nine ten\n";
+        let text = render_all(source, 20);
+        let quoted: Vec<&String> = text.iter().filter(|l| l.starts_with('│')).collect();
+
+        assert!(quoted.len() > 1, "the quote should wrap: {text:?}");
+        for line in &quoted {
+            assert!(line.starts_with("│ "), "{line:?}");
+            assert!(line.chars().count() <= 20, "{line:?}");
+        }
+    }
+
+    #[test]
+    fn a_nested_quote_gets_a_bar_per_level() {
+        let text = render_all("> > deep\n", 30);
+        let quote = text.iter().find(|l| l.contains("deep")).expect("a quote");
+
+        assert!(quote.starts_with("│ │ "), "{quote:?}");
+    }
+
+    #[test]
+    fn the_bar_takes_the_theme_s_style() {
+        let theme = Theme::dark();
+        let document = Document::scratch("> quoted\n");
+        let renderer = renderer(30);
+        let mut layout = RenderedDocument::new();
+
+        let lines = layout.window(&document, &renderer, 0, 5);
+        let at = text_of(&lines)
+            .iter()
+            .position(|l| l.contains("quoted"))
+            .expect("a quote");
+
+        assert_eq!(lines[at].spans[0].content.as_ref(), "│ ");
+        assert_eq!(
+            lines[at].spans[0].style.fg,
+            theme.markdown.blockquote_bar.fg
+        );
+    }
+
+    /// A GitHub alert is a quote whose first line `tui-markdown` turns into an
+    /// icon and a label. It must still get the bar.
+    #[test]
+    fn an_alert_keeps_the_bar() {
+        let text = render_all("> [!NOTE]\n> careful\n", 40);
+
+        assert!(
+            text.iter().filter(|l| l.starts_with('│')).count() >= 2,
+            "{text:?}"
+        );
+        assert!(text.iter().any(|l| l.contains("Note")), "{text:?}");
     }
 }

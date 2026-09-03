@@ -30,12 +30,12 @@ expression: "frame(&mut app, width, height)"
 │                              ││                                                                                      █
 │                              ││## A blockquote containing a list                                                     █
 │                              ││                                                                                      █
-│                              ││> Quoted text.                                                                        █
-│                              ││>                                                                                     █
-│                              ││> - first                                                                             █
-│                              ││> - second                                                                            █
-│                              ││>                                                                                     █
-│                              ││> More quoted text.                                                                   █
+│                              │││ Quoted text.                                                                        █
+│                              │││                                                                                     █
+│                              │││ - first                                                                             █
+│                              │││ - second                                                                            █
+│                              │││                                                                                     █
+│                              │││ More quoted text.                                                                   █
 │                              ││                                                                                      ║
 │                              ││## Code blocks                                                                        ║
 │                              ││                                                                                      ║
