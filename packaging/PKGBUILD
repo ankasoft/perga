@@ -18,8 +18,8 @@ source_x86_64=("$_pkgname-$pkgver-x86_64.tar.xz::$_url_base/$_pkgname-x86_64-unk
 source_aarch64=("$_pkgname-$pkgver-aarch64.tar.xz::$_url_base/$_pkgname-aarch64-unknown-linux-musl.tar.xz")
 
 # Replace both per release; see packaging/README.md.
-sha256sums_x86_64=('SKIP')
-sha256sums_aarch64=('SKIP')
+sha256sums_x86_64=('8695e74ed674997cb1a638b6d878e292916839395ae1b17d9c9c5ee58807ae65')
+sha256sums_aarch64=('b1448bb0e79f0f189c7d45af86091a71682fd9d53156d962ea1f27ef019abe74')
 
 package() {
   # dist's archives hold one top-level directory named after the target.
