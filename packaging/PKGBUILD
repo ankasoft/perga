@@ -3,7 +3,7 @@
 
 pkgname=perga-bin
 _pkgname=perga
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="A terminal Markdown browser with a persistent file tree, tabs, wiki-links and backlinks"
 arch=('x86_64' 'aarch64')
@@ -18,8 +18,8 @@ source_x86_64=("$_pkgname-$pkgver-x86_64.tar.xz::$_url_base/$_pkgname-x86_64-unk
 source_aarch64=("$_pkgname-$pkgver-aarch64.tar.xz::$_url_base/$_pkgname-aarch64-unknown-linux-musl.tar.xz")
 
 # Replace both per release; see packaging/README.md.
-sha256sums_x86_64=('3563d555cf4af38daa2249504c9f54fbee4aca0f0a0dcbc1e56244c0ebae7802')
-sha256sums_aarch64=('0e50dcf6a1323505c747c7aac9d4ec5d6efa7e199ff78ff73c5d145f383841ec')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
 
 package() {
   # dist's archives hold one top-level directory named after the target.

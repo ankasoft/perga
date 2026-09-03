@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-09-03
+
+### Fixed
+
+- **The built-in themes are now readable.** Thirteen keys of the default `dark`
+  theme sat at 3.36:1 contrast or below, three of them with `dim` on top. Body
+  text was fine; it was everything around the document that could not be read —
+  the sidebar's mode row, the path in the title bar, inactive tab labels,
+  search result line numbers, unchecked task items, and every "nothing here"
+  line.
+
+  Both `dark` and `light` now clear WCAG AA everywhere: 4.5:1 for anything
+  carrying text, 3:1 for a border or a rule, measured against the surface it is
+  actually drawn on — including the selection background, because a selected
+  row keeps its own foreground. Two tests enforce this and name the offending
+  key, so it cannot come back.
+
+  `dim` is gone from the muted colours: on most terminals it halves the
+  intensity and undoes the contrast the colour was chosen for.
+
 ## [0.1.2] — 2026-09-02
 
 ### Fixed
@@ -140,7 +160,8 @@ The first release.
 - Deletion is deliberately not offered. Every other file operation can be
   undone; that one cannot.
 
-[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/ankasoft/perga/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ankasoft/perga/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ankasoft/perga/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ankasoft/perga/releases/tag/v0.1.0
