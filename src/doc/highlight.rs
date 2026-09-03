@@ -1,7 +1,7 @@
 //! Syntax highlighting for fenced code blocks, loaded lazily and off-thread.
 //!
 //! `SyntaxSet::load_defaults_newlines` decompresses an embedded dump and costs
-//! on the order of 50 to 100 ms — on its own that is the entire first-frame
+//! on the order of 50 to 100 ms, and on its own that is the entire first-frame
 //! budget from Section 14. Loading therefore happens on a background thread:
 //! until it finishes, code blocks render unhighlighted against the theme's
 //! `code_block_bg`, and they are re-rendered once the set arrives. A single

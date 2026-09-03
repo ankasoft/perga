@@ -1,7 +1,7 @@
 //! Wiki-links, the backlink index, and its cache.
 //!
 //! Every acceptance criterion in Section 9.6 is asserted here, apart from the
-//! two that are timing rather than behaviour — those are measured by
+//! two that are timing rather than behaviour; those are measured by
 //! `benches/vault.rs`, for the reason in Section 15.6.
 
 mod common;

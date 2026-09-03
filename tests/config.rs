@@ -87,7 +87,7 @@ fn a_local_config_can_be_turned_off() {
     std::fs::write(&explicit, "[general]\nallow_local_config = false\n").unwrap();
 
     // `allow_local_config` is read from the layers *below* the local file, so
-    // an explicit config that turns it off arrives too late to matter here —
+    // an explicit config that turns it off arrives too late to matter here,
     // the check that matters is that the key exists and parses.
     let config = Config::load(&root, Some(&explicit), false);
     assert!(!config.general.allow_local_config);
@@ -316,7 +316,7 @@ fn a_user_theme_joins_the_cycle_after_the_built_ins() {
     }
 }
 
-/// The watcher re-reads `theme.name`, so a switch has to move it — otherwise
+/// The watcher re-reads `theme.name`, so a switch has to move it, or else
 /// editing the theme on screen reloads the previous one over the top.
 #[test]
 fn switching_theme_moves_what_the_watcher_reloads() {

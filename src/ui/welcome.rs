@@ -1,7 +1,7 @@
 //! The welcome screen and its three ASCII logo size tiers.
 //!
 //! A tab with no document open shows this: on launch in an empty directory, and
-//! on every `Ctrl+T`. It is the only place in perga where branding appears —
+//! on every `Ctrl+T`. It is the only place in perga where branding appears,
 //! there is no startup splash, no persistent banner, nothing in the help
 //! overlay, and nothing in `--version`.
 //!

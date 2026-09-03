@@ -2,7 +2,7 @@
 //!
 //! This module decides *which context* a key press is resolved in and hands the
 //! press to the keymap; the keymap decides what the key means. Nothing here
-//! matches on a `KeyCode` for an application binding — the moment two places do
+//! matches on a `KeyCode` for an application binding: the moment two places do
 //! that, the conflicts described in Section 12 of the build specification start
 //! appearing as unreproducible bugs.
 

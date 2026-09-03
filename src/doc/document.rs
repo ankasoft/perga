@@ -307,7 +307,7 @@ pub fn parser_options() -> Options {
 /// Extract a leading `---` fenced YAML block.
 ///
 /// Line-oriented and dependency-free by design. `serde_yaml` is archived and
-/// unmaintained, and nothing in v1 needs more than the top-level scalars — see
+/// unmaintained, and nothing in v1 needs more than the top-level scalars; see
 /// `docs/decisions.md`.
 fn parse_frontmatter(source: &str) -> Frontmatter {
     let mut frontmatter = Frontmatter::default();

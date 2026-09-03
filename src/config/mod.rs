@@ -15,7 +15,7 @@
 //! # A vault-local config is untrusted input
 //!
 //! `.perga.toml` arrives with any cloned repository. It may set presentation and
-//! navigation keys and nothing else — never `editor.external_command`, never a
+//! navigation keys and nothing else: never `editor.external_command`, never a
 //! key remap. See [`LOCAL_ALLOW_LIST`] and Section 10.
 
 pub mod keymap;

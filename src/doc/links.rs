@@ -3,7 +3,7 @@
 //! Extraction runs once per parse, alongside the block list, so a link carries
 //! the byte range it came from and can be placed on screen through the
 //! offset↔line map. Resolution is a pure function of the target string, the
-//! directory the containing document lives in, and the vault root — it never
+//! directory the containing document lives in, and the vault root; it never
 //! reads application state, which is what makes it testable against the awkward
 //! cases in Section 15.1.
 //!
@@ -120,7 +120,7 @@ fn extract_markdown(source: &str) -> (Vec<Link>, Vec<Range<usize>>) {
             Event::End(TagEnd::Link) => {
                 if let Some((range, target, kind, text)) = open.take() {
                     links.push(Link {
-                        // A link with no text of its own — an image link, say —
+                        // A link with no text of its own, an image link say,
                         // shows its target, which is better than a blank row in
                         // hint mode.
                         text: if text.trim().is_empty() {
@@ -161,8 +161,8 @@ fn extract_markdown(source: &str) -> (Vec<Link>, Vec<Range<usize>>) {
 /// Scan for `[[Page Name]]` in all four of its spellings.
 ///
 /// A scanner rather than a parser extension: the syntax is not Markdown, and
-/// the alternative — post-processing `pulldown-cmark`'s events back into the
-/// bracket pairs it split apart — reconstructs less reliably than reading the
+/// the alternative, post-processing `pulldown-cmark`'s events back into the
+/// bracket pairs it split apart, reconstructs less reliably than reading the
 /// source does.
 fn extract_wiki(source: &str, verbatim: &[Range<usize>]) -> Vec<Link> {
     let bytes = source.as_bytes();
@@ -235,7 +235,7 @@ fn split_wiki(inner: &str) -> (String, String) {
 
 /// Resolve a link target.
 ///
-/// `document_dir` is the directory of the document the link is written in —
+/// `document_dir` is the directory of the document the link is written in,
 /// relative targets resolve against it, not against the vault root, which is
 /// what a Markdown file's own links mean everywhere else.
 pub fn resolve(

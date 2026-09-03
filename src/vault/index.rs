@@ -9,7 +9,7 @@
 //! A directory's mtime does not change when a file nested inside it does, and an
 //! "aggregate mtime" for the vault would need the full walk the cache exists to
 //! avoid. So the cache records `(path, mtime, size)` for every file it indexed,
-//! and the tree walk — which runs anyway — says which of those are new, changed,
+//! and the tree walk, which runs anyway, says which of those are new, changed,
 //! or gone.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -90,7 +90,7 @@ pub enum WikiResolution {
     },
     /// Nothing in the vault matches.
     ///
-    /// The one case where perga offers to create a file — see Section 9.11.
+    /// The one case where perga offers to create a file; see Section 9.11.
     Missing {
         /// The page name as written, without any fragment.
         page: String,

@@ -167,7 +167,7 @@ pub enum Background {
 ///
 /// The variable is `fg;bg` in ANSI colour numbers, set by rxvt, Konsole, and
 /// several others. `None` when it is absent or unreadable, in which case the
-/// caller uses `dark` — see `docs/decisions.md` for why the OSC 11 query the
+/// caller uses `dark`; see `docs/decisions.md` for why the OSC 11 query the
 /// specification also names is not attempted.
 pub fn detect_background() -> Option<Background> {
     let raw = std::env::var("COLORFGBG").ok()?;
@@ -285,7 +285,7 @@ impl Theme {
     ///
     /// `auto` picks `dark` or `light` from the terminal background. A name that
     /// is not built in is looked for as `<name>.toml` in the theme directory,
-    /// and a name that matches nothing at all falls back to `dark` — perga
+    /// and a name that matches nothing at all falls back to `dark`, since perga
     /// opens the vault either way.
     pub fn resolve(name: &str, dir: Option<&std::path::Path>, warnings: &mut Vec<String>) -> Self {
         if name.eq_ignore_ascii_case("auto") {
@@ -369,7 +369,7 @@ impl Theme {
 ///
 /// Indices 0-15 are whatever the reader configured in their terminal and have
 /// no fixed value; the 6x6x6 cube and the grey ramp above them do. This is what
-/// lets the contrast test measure a degraded theme — the palette a terminal
+/// lets the contrast test measure a degraded theme, the palette a terminal
 /// without truecolour actually receives.
 pub fn ansi256_rgb(index: u8) -> Option<Color> {
     /// The six levels each channel of the colour cube takes.
@@ -442,11 +442,11 @@ pub fn contrast_ratio(a: Color, b: Color) -> Option<f64> {
 
 /// The nearest ANSI-256 colour to a truecolour value.
 ///
-/// Searched over the whole palette — the 6x6x6 cube *and* the 24-step grey
-/// ramp — rather than snapping each channel to the cube. Snapping is what a
+/// Searched over the whole palette, the 6x6x6 cube *and* the 24-step grey
+/// ramp, rather than snapping each channel to the cube. Snapping is what a
 /// first version did, and it is wrong in a way that shows: `#313244`, the dark
 /// theme's selection background, is 19 apart across its channels, fails a
-/// "is this grey?" threshold, and lands on `(95, 95, 95)` — twice as light as
+/// "is this grey?" threshold, and lands on `(95, 95, 95)`, twice as light as
 /// it should be, which then eats the contrast of every foreground drawn on it.
 /// The grey ramp had an entry 1 away.
 ///
@@ -692,7 +692,7 @@ mod tests {
     ///
     /// The second matters as much as the first: `COLORTERM` is unset on plenty
     /// of terminals, and the degraded palette is what those readers see. It is
-    /// also where `code_inline` was still failing after the first pass — 8.23:1
+    /// also where `code_inline` still failed after the first pass, at 8.23:1
     /// as written, 3.76:1 once snapped to the colour cube.
     fn variants(name: &str) -> Vec<(&'static str, Theme)> {
         let theme = Theme::builtin(name).expect("a built-in theme");

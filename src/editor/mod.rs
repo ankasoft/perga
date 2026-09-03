@@ -2,7 +2,7 @@
 //!
 //! Creating and renaming are here rather than in `vault` because they are what
 //! the editor is for. Both go through [`resolve_new_path`], which is the one
-//! place that decides whether a path the reader typed is allowed — and it
+//! place that decides whether a path the reader typed is allowed, and it
 //! refuses everything that would write outside the vault.
 
 pub mod buffer;
@@ -31,7 +31,7 @@ pub enum PathError {
 
 /// Turn a path the reader typed into an absolute one, or refuse it.
 ///
-/// `relative_to` is what a bare name is taken to be relative to — the active
+/// `relative_to` is what a bare name is taken to be relative to: the active
 /// document's directory, or the selected tree directory. A path is refused when
 /// it escapes the vault after normalisation, which is the check that makes
 /// `../../etc/passwd` a message rather than a write.
@@ -224,7 +224,7 @@ mod tests {
         );
 
         // A leading slash is read from the vault root, so this one lands
-        // inside it and is allowed — it is not an escape.
+        // inside it and is allowed; it is not an escape.
         assert_eq!(
             resolve_in(&root, "/etc/passwd", "docs").unwrap(),
             root.join("etc/passwd.md")

@@ -46,7 +46,7 @@ static STATE: TerminalState = TerminalState {
 
 /// Whether the terminal reported support for the kitty keyboard protocol.
 ///
-/// Bindings that depend on it — `Ctrl+Enter`, `Shift+Enter`, `Ctrl+Shift+F` —
+/// Bindings that depend on it (`Ctrl+Enter`, `Shift+Enter`, `Ctrl+Shift+F`)
 /// all have plain fallbacks that are always bound, so this only ever affects
 /// which spelling of a binding a given terminal can deliver.
 pub fn keyboard_enhancement_active() -> bool {
@@ -188,8 +188,8 @@ pub fn install_panic_hook() {
 ///
 /// The one way a terminal application can reach the clipboard of the machine
 /// the *terminal* is running on, which over SSH is not the machine perga is.
-/// Not every emulator honours it — several disable it by default as a security
-/// measure — and there is no reply to wait for, so the caller says what it
+/// Not every emulator honours it (several disable it by default as a security
+/// measure) and there is no reply to wait for, so the caller says what it
 /// tried rather than what happened.
 pub fn copy_to_clipboard(text: &str) -> std::io::Result<()> {
     use base64_encode as encode;

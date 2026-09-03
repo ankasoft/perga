@@ -23,7 +23,7 @@ pub struct Heading {
 /// Turn heading text into a GitHub-style anchor.
 ///
 /// Lower-cased with a Unicode-aware fold, spaces to hyphens, punctuation and
-/// symbols dropped — but **every Unicode letter and digit is kept**. This is
+/// symbols dropped, but **every Unicode letter and digit is kept**. This is
 /// the part that is easy to get wrong: a naive ASCII filter turns
 /// `## Kurulum Kılavuzu` into `kurulum-klavuzu`, silently breaking every link
 /// to it. The correct answer is `kurulum-kılavuzu`.
@@ -43,7 +43,7 @@ pub fn slugify(text: &str) -> String {
                 slug.push('-');
             }
         }
-        // Everything else — punctuation, symbols, emoji — is dropped.
+        // Everything else (punctuation, symbols, emoji) is dropped.
     }
 
     // A trailing hyphen comes from trailing whitespace or punctuation.

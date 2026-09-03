@@ -185,7 +185,7 @@ pub fn run(
     let mut truncated = false;
 
     // The same walk the tree uses, so search and tree agree about what is in
-    // the vault — including the ignore rules.
+    // the vault, including the ignore rules.
     let paths = collect_paths(root, walk, files, search, cancelled);
 
     'files: for relative in paths {

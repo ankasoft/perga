@@ -96,7 +96,7 @@ pub fn frame_buffer(app: &mut App, width: u16, height: u16) -> ratatui::buffer::
 /// Hide the crate version in a rendered frame.
 ///
 /// The welcome screen shows `perga <version>`, so without this every release
-/// invalidates seven snapshots — and a snapshot that churns on every release
+/// invalidates seven snapshots, and a snapshot that churns on every release
 /// is one people learn to accept without reading, which is the whole value of
 /// having it gone.
 ///

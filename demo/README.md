@@ -30,7 +30,7 @@ before the document keys; and nothing in the tree is selected until the first
 `j`, so there is one more of them than there are rows to travel.
 
 Regenerate it whenever the interface changes visibly, and always before a
-release — see [`../docs/publishing.md`](../docs/publishing.md).
+release; see [`../docs/publishing.md`](../docs/publishing.md).
 
 ## `social-preview.png`
 
@@ -43,8 +43,8 @@ in CI can do this, and the file being committed here is not enough.
 
 ### Regenerating it
 
-The image is a real perga frame — captured through the same renderer the
-application uses, not a mockup — typeset with ImageMagick. Two steps:
+The image is a real perga frame, captured through the same renderer the
+application uses rather than a mockup, typeset with ImageMagick. Two steps:
 
 ```sh
 # 1. Capture a 120x22 frame of perga reading the fixture vault.
@@ -70,7 +70,7 @@ Any monospace font works; the geometry above is tuned for JetBrains Mono at
 re-run without a Rust toolchain.
 
 The text is typeset in one colour rather than in the theme's, because the
-capture is plain text — the layout, the tree, and the document are genuinely
+capture is plain text: the layout, the tree, and the document are genuinely
 perga's output, and the palette is the `dark` theme's background and body
 colours. A photographic screenshot of a real terminal is a fine substitute if
 you have one; keep the size at exactly 1280x640.

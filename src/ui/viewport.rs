@@ -28,8 +28,8 @@ pub struct Viewport<'a> {
 impl<'a> Viewport<'a> {
     /// Build the viewport from lines the caller has already measured.
     ///
-    /// Rendering is a pure function of state, so the measuring — which mutates
-    /// the layout cache — happens before the frame, not during it.
+    /// Rendering is a pure function of state, so the measuring (which mutates
+    /// the layout cache) happens before the frame, not during it.
     pub fn new(app: &'a App, lines: &'a [Line<'static>], total: Option<usize>) -> Self {
         Viewport { app, lines, total }
     }

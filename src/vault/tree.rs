@@ -8,7 +8,7 @@
 //! # What the tree filters and what the walk filters
 //!
 //! The walk always finds dotted entries; the tree decides whether to show
-//! them. That is what makes `.` and `a` instant — toggling either re-flattens
+//! them. That is what makes `.` and `a` instant: toggling either re-flattens
 //! the visible rows rather than re-reading the filesystem. `.gitignore` is the
 //! exception: honouring it is a property of the walk, so changing it needs a
 //! new walk, and nothing in the UI offers to.
@@ -208,7 +208,7 @@ impl Tree {
         }
 
         // The walk yields parents before children, so this is the rare case of
-        // a path arriving without its directory — a watcher event, say.
+        // a path arriving without its directory, a watcher event say.
         let parent = match path.parent() {
             Some(parent) if !parent.as_os_str().is_empty() => self.ensure_directory(parent),
             _ => ROOT,

@@ -10,7 +10,7 @@ perga README.md      # a file, with its parent directory as the vault root
 
 The **vault** is the directory everything is relative to: the tree, the search,
 the backlink index, and the paths in the title bar. Opening a file still gives
-you a vault — its parent directory — so links out of that file resolve and the
+you a vault, its parent directory, so links out of that file resolve and the
 tree has something to show.
 
 Opening with no argument restores the previous session for that directory:
@@ -41,7 +41,7 @@ splitting the screen and draws over the viewport instead; below 20 rows the tab
 bar is hidden and the status bar collapses. The minimum size is 40x10.
 
 `Tab` moves focus between the sidebar and the viewport. The focused pane's
-border is drawn in the theme's `border_focused` colour — that is the only cue,
+border is drawn in the theme's `border_focused` colour. That is the only cue,
 so a theme that makes the two indistinguishable is a broken theme.
 
 ## The four sidebar modes
@@ -51,7 +51,7 @@ Switch with `m 1` to `m 4` anywhere, or `1` to `4` when the sidebar has focus.
 
 **Files** is the vault tree. Directories are collapsed except the path to the
 document you are reading, which is expanded and marked with `●`. `.` shows and
-hides dotted entries — they are shown by default, because a dotted directory in
+hides dotted entries. They are shown by default, because a dotted directory in
 a notes vault holds notes. `a` shows files that are not Markdown; they are
 dimmed, and opening one hands it to the desktop opener. `/` filters by name as
 you type.
@@ -72,8 +72,8 @@ which reports its progress here while it builds.
 `j`/`k` and the arrows scroll a line, `Ctrl+D`/`Ctrl+U` half a page,
 `Space`/`b` a page, `g g` and `G` the ends, `{` and `}` the headings.
 
-Code blocks and wide tables are never soft-wrapped — wrapping code destroys
-it — so `h` and `l` scroll them sideways and a `…` marks a clipped line.
+Code blocks and wide tables are never soft-wrapped, because wrapping ruins
+both, so `h` and `l` scroll them sideways and a `…` marks a clipped line.
 
 Scroll position is per tab and survives switching tabs, following a link and
 coming back, and reloading a file that changed on disk.
@@ -100,7 +100,7 @@ Relative targets resolve against the document's own directory, not the vault
 root. A leading `/` is read from the vault root first and the filesystem root
 second.
 
-`H` and `L` — or `Alt+Left` and `Alt+Right` — go back and forward, restoring
+`H` and `L`, or `Alt+Left` and `Alt+Right`, go back and forward, restoring
 the exact scroll offset you left. History is per tab, capped at 100 entries,
 and going somewhere new after going back discards the forward stack.
 
@@ -115,7 +115,7 @@ and going somewhere new after going back discards the forward stack.
 3. A case-insensitive filename match.
 
 Several matches open a picker rather than a guess. A name nothing answers to
-offers to create the file — the one place perga offers to create anything from
+offers to create the file, the one place perga offers to create anything from
 a link. A broken *inline* link never does.
 
 The index builds in the background on startup and is cached between runs, so a
@@ -130,7 +130,7 @@ bar. `Enter` and `Shift+Enter` cycle. Find state is per tab.
 
 `Ctrl+G` (or `Ctrl+Shift+F`) searches the whole vault. Results stream in as
 they are found; a new query cancels the one running. The query is literal
-unless `search.regex` is on or it is written between slashes — `/tok[e]n/`. An
+unless `search.regex` is on or it is written between slashes: `/tok[e]n/`. An
 invalid pattern is reported in the sidebar, never a crash.
 
 `m t` switches theme without restarting, cycling the three built-ins and then
@@ -154,7 +154,7 @@ state. Nothing crosses between them.
 
 `e` or `i` enters edit mode on the active document. The cursor lands on the
 source line you were reading, and leaving puts the rendered view back where the
-cursor was — you do not lose your place in either direction.
+cursor was, so you do not lose your place in either direction.
 
 `Ctrl+S` saves. `Esc` leaves, asking first if there are unsaved edits. The tab
 label and the status bar both show `●` while there are.
@@ -175,7 +175,7 @@ directory you are in. `.md` is appended when there is no extension, missing
 directories are created, and the new file opens in a new tab in edit mode.
 
 `R` renames the active document; `r` renames the selected tree entry. Both take
-a *name*, not a path — moving a note between directories is a different
+a *name*, not a path. Moving a note between directories is a different
 operation. Every tab pointing at the old path follows the rename, and the tree
 and the index are updated.
 
@@ -209,7 +209,7 @@ perga --print --wrap 72 note.md  # at a fixed width
 No alternate screen, no input, no mouse. A hard wrap wins, whether it came from
 `--wrap` or from `general.wrap`; otherwise the width is the terminal's when
 stdout is a TTY, and 80 columns when it is not. The configuration applies here
-too — the theme, the wrap, and the `[ui]` keys that affect rendering — and
+too (the theme, the wrap, and the `[ui]` keys that affect rendering), and
 `NO_COLOR` is honoured. A directory in print mode is an error.
 
 ## Other flags

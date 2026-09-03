@@ -2,7 +2,7 @@
 //!
 //! One file per vault, not one globally: two vaults open in two terminals would
 //! otherwise overwrite each other's tabs. The file carries a format version and
-//! is discarded on a mismatch — a session is a convenience, and reconstructing
+//! is discarded on a mismatch: a session is a convenience, and reconstructing
 //! one badly is worse than opening on the welcome screen.
 
 use std::path::{Path, PathBuf};

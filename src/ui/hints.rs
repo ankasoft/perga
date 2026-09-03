@@ -13,8 +13,8 @@ use crate::doc::links::Link;
 
 /// The keys labels are built from, in the order they are handed out.
 ///
-/// Home row first, so the links nearest the top of the viewport — the ones the
-/// reader is most likely to want — get the keys that need no finger movement.
+/// Home row first, so the links nearest the top of the viewport (the ones the
+/// reader is most likely to want) get the keys that need no finger movement.
 pub const KEYS: [char; 9] = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'];
 
 /// Assign a label to each of `count` links.

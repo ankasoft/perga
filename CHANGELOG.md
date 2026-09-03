@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.5] — 2026-09-03
+## [0.1.5] - 2026-09-03
 
 Three style keys had been defined in the themes and documented since the first
 version, and used by nothing. This is them.
@@ -17,7 +17,7 @@ version, and used by nothing. This is them.
 - **`ui.show_heading_markers`**, default `true`. Turning it off hides the `#`
   a heading is written with, leaving colour and weight to mark it. The default
   stays on because `strip_colors` keeps modifiers but drops colour, and every
-  heading level in every built-in theme is *only* bold — so without the `#`,
+  heading level in every built-in theme is *only* bold, so without the `#`
   h1 through h6 collapse into each other under `NO_COLOR`. Edit mode always
   shows the source, marker included.
 
@@ -39,18 +39,18 @@ version, and used by nothing. This is them.
 
 - **Print mode reads the configuration.** It built its own `dark` theme and
   never called the config loader, so `--theme`, `theme.name`, `general.wrap`
-  and every `[ui]` key were ignored under `--print` — against Section 9.12,
+  and every `[ui]` key were ignored under `--print`, against Section 9.12,
   which says the theme applies there. Configuration warnings go to stderr, so
   they cannot land in the middle of a redirected document.
 
-## [0.1.4] — 2026-09-03
+## [0.1.4] - 2026-09-03
 
 ### Added
 
 - **`m t` switches theme without restarting**, cycling `dark`, `light`,
   `high-contrast`, and then whatever themes are in your theme directory. The
-  choice is remembered for the next run on that vault — unless you started with
-  `--theme`, which is a decision about that run and is not overwritten.
+  choice is remembered for the next run on that vault, unless you started
+  with `--theme`, which is a decision about that run and is not overwritten.
 
   The session file has recorded the last theme since 0.1.0 and nothing ever
   read it back, because nothing could change the theme at runtime.
@@ -58,8 +58,8 @@ version, and used by nothing. This is them.
 ### Fixed
 
 - **Colour degradation is no longer crude.** On a terminal that does not
-  advertise truecolour in `COLORTERM` — which is many of them — every colour is
-  mapped to the ANSI-256 palette. That mapping snapped each channel to the
+  advertise truecolour in `COLORTERM` (which is many of them), every colour
+  is mapped to the ANSI-256 palette. That mapping snapped each channel to the
   colour cube after a per-channel grey test, and it was badly wrong for the
   colours that matter most: the page background became pure black, 63 units off
   its intended value, and the selection background came out twice as light as
@@ -68,32 +68,32 @@ version, and used by nothing. This is them.
   It now searches the whole palette. The page background is 14 units off
   instead of 63, the selection 16 instead of 70.
 
-- Two colours that still failed contrast once degraded — `code_inline` in both
-  themes, and the dark theme's muted grey — were adjusted. The contrast tests
+- Two colours that still failed contrast once degraded (`code_inline` in both
+  themes, and the dark theme's muted grey) were adjusted. The contrast tests
   now measure both palettes, so a terminal without truecolour gets the same
   guarantee as one with it.
 
-## [0.1.3] — 2026-09-03
+## [0.1.3] - 2026-09-03
 
 ### Fixed
 
 - **The built-in themes are now readable.** Thirteen keys of the default `dark`
   theme sat at 3.36:1 contrast or below, three of them with `dim` on top. Body
-  text was fine; it was everything around the document that could not be read —
-  the sidebar's mode row, the path in the title bar, inactive tab labels,
+  text was fine; it was everything around the document that could not be
+  read: the sidebar's mode row, the path in the title bar, inactive tab labels,
   search result line numbers, unchecked task items, and every "nothing here"
   line.
 
   Both `dark` and `light` now clear WCAG AA everywhere: 4.5:1 for anything
   carrying text, 3:1 for a border or a rule, measured against the surface it is
-  actually drawn on — including the selection background, because a selected
+  actually drawn on, including the selection background, because a selected
   row keeps its own foreground. Two tests enforce this and name the offending
   key, so it cannot come back.
 
   `dim` is gone from the muted colours: on most terminals it halves the
   intensity and undoes the contrast the colour was chosen for.
 
-## [0.1.2] — 2026-09-02
+## [0.1.2] - 2026-09-02
 
 ### Fixed
 
@@ -104,8 +104,8 @@ version, and used by nothing. This is them.
   everything else is text. `Ctrl+C` is handled before the keymap, so there is
   always a way out.
 
-  This also means the global bindings — `Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the
-  rest — no longer reach the application from edit mode. That is the intended
+  This also means the global bindings (`Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the
+  rest) no longer reach the application from edit mode. That is the intended
   trade: inside a buffer, `Ctrl+W` deleting a word matters more than closing a
   tab.
 
@@ -114,7 +114,7 @@ version, and used by nothing. This is them.
   `Ctrl+B`, made the sidebar disappear. `Tab focus the file tree` comes first
   in both, and the toggle is labelled `hide sidebar`.
 
-## [0.1.1] — 2026-09-02
+## [0.1.1] - 2026-09-02
 
 ### Fixed
 
@@ -129,7 +129,7 @@ version, and used by nothing. This is them.
   users, not necessarily Rust users; `~/.local/bin` is on `PATH` out of the box
   on current distributions.
 
-## [0.1.0] — 2026-09-02
+## [0.1.0] - 2026-09-02
 
 The first release.
 
@@ -189,8 +189,8 @@ The first release.
 - Atomic saves that preserve permissions, detect a file that changed on disk,
   and never truncate the original.
 - File creation and renaming that refuse anything writing outside the vault,
-  follow every tab pointing at a renamed file, and report — rather than
-  rewrite — links to the old name.
+  follow every tab pointing at a renamed file, and report, rather than
+  rewrite, links to the old name.
 - Recovery files for unsaved text when perga is signalled, offered back the
   next time the document is opened.
 - `$EDITOR` handoff that leaves the terminal properly, so a full-screen editor
@@ -205,8 +205,8 @@ The first release.
 - A vault-local `.perga.toml` restricted to presentation keys, because it
   arrives with any repository you clone.
 - Full key remapping from `[keys]`, reflected in the help overlay and the docs.
-- Three built-in themes — `dark`, `light`, and an ANSI-16 `high-contrast` — user
-  themes loaded from files with hot reload, background detection from
+- Three built-in themes (`dark`, `light`, and an ANSI-16 `high-contrast`),
+  user themes loaded from files with hot reload, background detection from
   `COLORFGBG`, ANSI-256 degradation, and `NO_COLOR`.
 - One session per vault, restored when perga is opened with no path.
 

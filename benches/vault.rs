@@ -95,7 +95,7 @@ fn first_frame(c: &mut Criterion) {
             b.iter(|| {
                 let mut tree = Tree::new(&config);
                 tree.insert_all(entries.iter().cloned());
-                // With everything collapsed, only the top level is drawn —
+                // With everything collapsed, only the top level is drawn,
                 // which is the point of the lazy tree.
                 black_box(tree.rows().len())
             });

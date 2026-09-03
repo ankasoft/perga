@@ -95,7 +95,7 @@ impl Drop for WalkHandle {
 ///
 /// The walk is single-threaded. `ignore` can walk in parallel, but the tree
 /// sorts what it receives anyway, so the only thing parallelism buys is wall
-/// clock on a vault large enough for the streaming to hide it regardless — at
+/// clock on a vault large enough for the streaming to hide it regardless, at
 /// the cost of a second channel and a harder cancellation story.
 pub fn spawn(
     root: impl AsRef<Path>,

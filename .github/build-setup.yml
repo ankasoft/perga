@@ -2,7 +2,7 @@
 # `ci.github.build-setup` in dist-workspace.toml.
 #
 # The archives include `target/assets/perga.1` and `target/assets/completions/`,
-# and `dist` collects those paths in the *local* build job — before the
+# and `dist` collects those paths in the *local* build job, before the
 # `extra-artifacts` command, which runs in the separate global job, has had a
 # chance to produce them. So they are produced here instead, in the same job
 # that assembles the archive.

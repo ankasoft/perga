@@ -2,7 +2,7 @@ name = "dark"
 # Every foreground here clears WCAG AA against the surface it is drawn on:
 # 4.5:1 for anything that is text, 3:1 for a border or a rule. The test in
 # src/theme/mod.rs enforces it. `dim` is deliberately absent from the muted
-# colours — on most terminals it halves the intensity and undoes the contrast
+# colours: on most terminals it halves the intensity and undoes the contrast
 # the colour was chosen for.
 # Which syntect theme to use for fenced code blocks; overrides theme.code_theme.
 code_theme = "base16-ocean.dark"

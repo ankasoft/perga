@@ -16,14 +16,14 @@ nothing in `src/ui` mutates anything.
 
 That is what makes the whole application testable without a terminal. Feed a
 sequence of actions, assert on state, and render to `ratatui`'s `TestBackend`
-for a snapshot — which is what every test in `tests/` does.
+for a snapshot, which is what every test in `tests/` does.
 
 ## The event loop
 
 Terminal input is read on its own thread that calls `crossterm::event::read()`
-in a loop and forwards each event down a channel. Every background worker —
+in a loop and forwards each event down a channel. Every background worker,
 the vault walker, the backlink indexer, the project searcher, the filesystem
-watcher — sends into the same channel. The main loop does one blocking `recv()`
+watcher, sends into the same channel. The main loop does one blocking `recv()`
 and nothing else.
 
 No `poll(timeout)`, no `try_recv` spin, no timer. That is what makes 0% idle
@@ -53,7 +53,7 @@ happens on the watcher's thread, where it belongs.
 `tui_markdown::from_str` returns a `Text` borrowing its input. Holding the
 source string, the parsed blocks, and the rendered lines in one struct fights
 the borrow checker until the lines become `Vec<Line<'static>>` at the cache
-boundary — which is what `doc::render` does, once, on the way in.
+boundary, which is what `doc::render` does, once, on the way in.
 
 The cache is keyed by `(hash of the block's source, width, whether syntax
 highlighting had loaded)`, never by byte range. Inserting one character shifts
@@ -66,8 +66,8 @@ re-renders one block, and there is a test that asserts exactly that.
 Five features need to translate between a byte offset in the source and a line
 on screen: anchor scrolling, find, outline synchronisation, link positioning,
 and the edit-mode cursor round trip. It is a deliberate structure in
-`doc::render` — a sorted list of `(rendered line, source offset)` origins, one
-binary search serving both directions — and not a side effect of rendering.
+`doc::render` (a sorted list of `(rendered line, source offset)` origins, one
+binary search serving both directions) and not a side effect of rendering.
 When it emerges accidentally, all five features go subtly wrong in different
 ways.
 

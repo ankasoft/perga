@@ -6,8 +6,8 @@
 //!
 //! Actions fall into two groups. Most are *bindable*: they carry no payload,
 //! they appear in the keymap table in [`crate::config::keymap`], and they show
-//! up in the help overlay. The rest are internal — resize notifications and
-//! background-worker progress — and are never reachable from a key.
+//! up in the help overlay. The rest are internal (resize notifications and
+//! background-worker progress) and are never reachable from a key.
 
 use std::path::PathBuf;
 

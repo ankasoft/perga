@@ -8,7 +8,7 @@ and one that sets a single key inherits the rest.
 Five layers, each overriding the one before it, key by key:
 
 1. Built-in defaults
-2. `$XDG_CONFIG_HOME/perga/config.toml` — usually `~/.config/perga/config.toml`
+2. `$XDG_CONFIG_HOME/perga/config.toml`, usually `~/.config/perga/config.toml`
 3. `.perga.toml` in the vault root, if `general.allow_local_config` is true
 4. `--config <FILE>`
 5. Individual command-line flags
@@ -39,7 +39,7 @@ An **unknown key** produces a warning and is ignored, so a configuration
 written for a newer perga still opens your vault.
 
 An **invalid value** produces a warning naming the key and falls back to the
-default *for that key alone* — a mistyped `sidebar_width` costs you the sidebar
+default *for that key alone*: a mistyped `sidebar_width` costs you the sidebar
 width, not the whole `[ui]` table.
 
 A **file that is not valid TOML** is skipped with a warning.
@@ -60,7 +60,7 @@ Every key, with its default. This is the same text `--generate-config` prints.
 [general]
 # Directory opened when no PATH argument is given.
 start_path = "."
-# Read .perga.toml from the vault root (presentation keys only — see Section 10).
+# Read .perga.toml from the vault root (presentation keys only, see Section 10).
 allow_local_config = true
 # Follow symlinks while walking the vault.
 follow_symlinks = false
@@ -78,7 +78,7 @@ sidebar_default_mode = "files"
 always_show_tabs = false
 show_line_numbers = false
 # Show the `#` a heading is written with. With it off, a heading is told from
-# body text by colour and weight alone — enough on a colour terminal, and not
+# body text by colour and weight alone, enough on a colour terminal, and not
 # enough under NO_COLOR, where every level collapses to bold.
 show_heading_markers = true
 show_status_bar = true
@@ -167,7 +167,7 @@ max_recent = 50
 Markdown browsers. A dotted directory in a notes vault holds notes, and hiding
 `.github` or `.claude` with no visible override is the behaviour this project
 exists to avoid. `.git`, `.hg`, `.svn`, and `.jj` are always excluded and that
-is not configurable — a `.git` directory holds tens of thousands of object
+is not configurable: a `.git` directory holds tens of thousands of object
 files and nothing a reader wants.
 
 **`files.respect_gitignore`** is a property of the walk, so changing it needs a

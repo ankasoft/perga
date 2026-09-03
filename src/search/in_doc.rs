@@ -3,7 +3,7 @@
 //! Matching is over the document's *source*, so a match has a byte offset and
 //! goes through the offset↔line map like everything else that has to know
 //! where it ended up on screen. Highlighting is done separately, by searching
-//! the rendered text of the lines that are actually visible — see
+//! the rendered text of the lines that are actually visible; see
 //! `docs/decisions.md`.
 
 use crate::ui::overlay::prompt::TextInput;
@@ -120,7 +120,7 @@ pub fn find_all(haystack: &str, query: &str) -> Vec<usize> {
         return haystack.match_indices(query).map(|(at, _)| at).collect();
     }
 
-    // Lower-casing can change a string's length — `İ` becomes two chars — so
+    // Lower-casing can change a string's length (`İ` becomes two chars) so
     // offsets are tracked against the original rather than the folded copy.
     let folded_query = query.to_lowercase();
     let mut out = Vec::new();

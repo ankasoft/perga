@@ -41,7 +41,7 @@ impl<'a> Confirm<'a> {
         }
 
         // `Esc` always means "do nothing", and saying so is cheaper than
-        // making the reader guess — unless the dialog already offered a
+        // making the reader guess, unless the dialog already offered a
         // cancel of its own, in which case repeating it is noise.
         if !self.choices.iter().any(|(_, label)| label == "cancel") {
             spans.push(Span::styled(" Esc ", self.theme.ui.status_mode));

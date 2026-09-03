@@ -27,7 +27,7 @@ use crate::ui::sidebar::SidebarMode;
 
 /// Where a binding applies.
 ///
-/// Lookup order is the active context first, then [`KeyContext::Global`] —
+/// Lookup order is the active context first, then [`KeyContext::Global`],
 /// except in [`KeyContext::Edit`], which inherits nothing. See
 /// [`inherits_global`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -69,7 +69,7 @@ impl KeyChord {
     ///
     /// Two normalisations matter, and both exist because terminals disagree:
     ///
-    /// * For a plain character, case already carries `Shift` — `G` arrives as
+    /// * For a plain character, case already carries `Shift`: `G` arrives as
     ///   `Char('G')`, sometimes with `SHIFT` set and sometimes without. The
     ///   `SHIFT` bit is dropped so both spellings match the same binding.
     /// * For a character with `Ctrl` held, the case is not meaningful but
@@ -188,9 +188,9 @@ impl fmt::Display for KeyChord {
 
         match self.code {
             KeyCode::Char(' ') => f.write_str("Space"),
-            // A modified letter is conventionally written in upper case —
-            // `Ctrl+B`, not `Ctrl+b` — even though the chord itself stores the
-            // lower-case form.
+            // A modified letter is conventionally written in upper case,
+            // `Ctrl+B` and not `Ctrl+b`, even though the chord itself
+            // stores the lower-case form.
             KeyCode::Char(c)
                 if self
                     .modifiers
@@ -756,8 +756,8 @@ impl Keymap {
 
     /// The first binding for an action, formatted for display.
     ///
-    /// Used wherever the UI shows a key to the user — the status bar hints and
-    /// the welcome screen's onboarding block — so those reflect a remap for the
+    /// Used wherever the UI shows a key to the user (the status bar hints and
+    /// the welcome screen's onboarding block) so those reflect a remap for the
     /// same reason the help overlay does.
     pub fn binding_for(&self, action: &Action) -> Option<String> {
         self.entries
@@ -804,7 +804,7 @@ impl Keymap {
     /// Feed one key press to the keymap.
     ///
     /// There is no sequence timeout: a pending sequence completes on the next
-    /// chord, or is abandoned by a chord that does not continue it — and that
+    /// chord, or is abandoned by a chord that does not continue it, and that
     /// chord is then reconsidered on its own, so nothing is swallowed. This is
     /// why prefix keys such as `g` and `m` have no standalone meaning.
     pub fn resolve(&mut self, context: KeyContext, chord: KeyChord) -> Resolution {
@@ -1136,8 +1136,8 @@ mod tests {
         );
     }
 
-    /// One action may appear in two contexts — `escape` is bound in both
-    /// `Global` and `Edit` — and a remap of it moves both. What must not
+    /// One action may appear in two contexts (`escape` is bound in both
+    /// `Global` and `Edit`) and a remap of it moves both. What must not
     /// happen is two *different* actions answering to one name.
     #[test]
     fn no_two_actions_share_a_name() {

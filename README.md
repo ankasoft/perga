@@ -7,8 +7,8 @@ Markdown files and lets you navigate, read, search, and edit them with the
 ergonomics of a document browser rather than a pager.
 
 A persistent hierarchical sidebar, a document viewport with tabs, browser-like
-back/forward history per tab, wiki-links with backlinks, and in-place editing —
-in one static binary with no runtime dependencies.
+back/forward history per tab, wiki-links with backlinks, and in-place editing,
+all in one static binary with no runtime dependencies.
 
 ## Name origin
 
@@ -20,7 +20,7 @@ the root of the written page.
 
 ## What it is for
 
-A vault of Markdown files — notes, a documentation tree, a wiki — read and
+A vault of Markdown files (notes, a documentation tree, a wiki) read and
 edited in the terminal, with the directory structure kept in front of you and
 links between documents that actually go somewhere.
 
@@ -28,7 +28,7 @@ links between documents that actually go somewhere.
 |---|---|---|
 | [`glow`](https://github.com/charmbracelet/glow) | Finds Markdown files recursively, lists them, renders them with Glamour | A hierarchical tree kept on screen while you read, link navigation between documents, per-tab history, and editing |
 | [`frogmouth`](https://github.com/Textualize/frogmouth) | Browser-like navigation, history, bookmarks, a table of contents | A persistent file tree, wiki-links and backlinks, and a static binary with no interpreter to start |
-| [`mdcat`](https://github.com/swsnr/mdcat) | Single-document rendering, with inline images on capable terminals | An interactive browser rather than a one-shot renderer — though `perga --print` covers that case too |
+| [`mdcat`](https://github.com/swsnr/mdcat) | Single-document rendering, with inline images on capable terminals | An interactive browser rather than a one-shot renderer, though `perga --print` covers that case too |
 | [`bat`](https://github.com/sharkdp/bat) | Syntax-highlighted paging for any file, Markdown included | Rendered Markdown rather than highlighted source, plus everything above |
 
 All four are good at what they do, and `mdcat` in particular renders a single
@@ -63,7 +63,7 @@ curl -sSfL https://github.com/ankasoft/perga/releases/latest/download/perga-inst
 ```
 
 Installs the binary to `~/.local/bin`. It does not install the man page or the
-shell completions — take those from the tarball above, or use a package.
+shell completions; take those from the tarball above, or use a package.
 
 ### Arch Linux
 
@@ -126,20 +126,20 @@ Full reference: [docs/keybindings.md](docs/keybindings.md).
 
 ### A note for tmux users
 
-`Ctrl+B` toggles the sidebar, and it is also the default tmux prefix — tmux
+`Ctrl+B` toggles the sidebar, and it is also the default tmux prefix, so tmux
 consumes it before perga sees it. `Ctrl+E` is bound to the same action and is
 always available.
 
 ## Documentation
 
-- [Usage](docs/usage.md) — the whole interface, feature by feature
-- [Configuration](docs/configuration.md) — every key, with its default
-- [Keybindings](docs/keybindings.md) — every binding, and how to remap it
-- [Theming](docs/theming.md) — writing a theme, and every style key
-- [Architecture](docs/architecture.md) — how it is put together
-- [Publishing](docs/publishing.md) — how a release is cut
-- [Licensing](docs/licensing.md) — what the licence means for you
-- [Decisions](docs/decisions.md) — why things are the way they are
+- [Usage](docs/usage.md): the whole interface, feature by feature
+- [Configuration](docs/configuration.md): every key, with its default
+- [Keybindings](docs/keybindings.md): every binding, and how to remap it
+- [Theming](docs/theming.md): writing a theme, and every style key
+- [Architecture](docs/architecture.md): how it is put together
+- [Publishing](docs/publishing.md): how a release is cut
+- [Licensing](docs/licensing.md): what the licence means for you
+- [Decisions](docs/decisions.md): why things are the way they are
 
 ## Contributing
 

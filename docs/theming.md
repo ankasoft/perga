@@ -20,15 +20,15 @@ code_theme = "base16-ocean.dark"
 
 **`m t` switches theme while perga is running**, cycling `dark`, `light`,
 `high-contrast`, and then whatever `.toml` files are in your theme directory.
-The choice is remembered for the next run on that vault — unless you started
+The choice is remembered for the next run on that vault, unless you started
 with `--theme`, which is a decision about *this* run and is not overwritten.
 
 `auto` is not one of the stops. It is a way of choosing a theme at startup, so
 offering it as a destination would be a stop whose meaning depends on the
 terminal.
 
-`auto` reads the `COLORFGBG` environment variable — set by rxvt, Konsole, and
-several others — and picks `dark` or `light`. Terminals that do not set it get
+`auto` reads the `COLORFGBG` environment variable (set by rxvt, Konsole, and
+several others) and picks `dark` or `light`. Terminals that do not set it get
 `dark`.
 
 ## The three built-in themes
@@ -40,7 +40,7 @@ several others — and picks `dark` or `light`. Terminals that do not set it get
 
 Both `dark` and `light` clear WCAG AA everywhere: **4.5:1 for anything that
 carries text, 3:1 for a border or a rule**, measured against the surface it is
-actually drawn on — including the selection background, because a selected row
+actually drawn on, including the selection background, because a selected row
 keeps its own foreground, and including the ANSI-256 palette a terminal without
 truecolour receives. Tests in `src/theme/mod.rs` enforce this and name the key
 that fails, so a theme change cannot quietly make the interface unreadable.
@@ -57,7 +57,7 @@ video.
 ## Colour degradation
 
 When `COLORTERM` does not claim `truecolor` or `24bit`, every `#rrggbb` value
-is mapped to its nearest ANSI-256 colour, searched over the whole palette — the
+is mapped to its nearest ANSI-256 colour, searched over the whole palette. The
 6×6×6 cube *and* the 24-step grey ramp. Sending 24-bit escapes to a terminal
 that cannot read them would print them as text.
 
@@ -71,12 +71,12 @@ bold headings stay bold. It is applied last and wins over everything.
 ## Writing one
 
 Put `mine.toml` in `$XDG_CONFIG_HOME/perga/themes/` and set
-`theme.name = "mine"`, or reach it with `m t` — user themes join the cycle
+`theme.name = "mine"`, or reach it with `m t`; user themes join the cycle
 after the three built-ins, in alphabetical order.
 
 perga watches that directory: save the file and the running application picks
 it up, which makes authoring a theme a matter of `:w` and looking at the
-screen. `m t` is the other half of that loop — it is how you compare what you
+screen. `m t` is the other half of that loop: it is how you compare what you
 have written against `dark` without restarting.
 
 Start from the smallest thing that changes what you want:
@@ -123,13 +123,13 @@ h1 = { fg = "green", bold = false }   # green, and not bold, unlike dark's h1
 
 ### Every key
 
-**`[ui]`** — the chrome.
+**`[ui]`**: the chrome.
 
 | Key | Where it is used |
 |---|---|
 | `background` | Painted behind the whole frame |
 | `border` | An unfocused pane's border |
-| `border_focused` | The focused pane's border — the only cue for focus |
+| `border_focused` | The focused pane's border, the only cue for focus |
 | `title` | The application name in the title bar, and key names in hints |
 | `status_bar` | The status bar's ground |
 | `status_mode` | The `READ`/`EDIT` badge, and a confirmation's keys |
@@ -140,20 +140,20 @@ h1 = { fg = "green", bold = false }   # green, and not bold, unlike dark's h1
 | `logo` | The welcome screen's wordmark |
 | `logo_subtitle` | The line under it, the scroll position, and overlay hints |
 
-**`[tabs]`** — `active`, `inactive`, `dirty`.
+**`[tabs]`**: `active`, `inactive`, `dirty`.
 
-**`[sidebar]`** — `directory`, `file`, `file_active`, `file_other` (a file
+**`[sidebar]`**: `directory`, `file`, `file_active`, `file_other` (a file
 perga does not render, and every "nothing here" line), `mode_active`,
 `mode_inactive`, `match` (a filter or search hit), `line_number`.
 
-**`[markdown]`** — `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `text`, `emphasis`, `strong`,
+**`[markdown]`**: `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `text`, `emphasis`, `strong`,
 `strikethrough`, `blockquote`, `blockquote_bar`, `code_inline`,
 `code_block_bg`, `link`, `link_focused`, `link_broken`, `link_external`,
 `wikilink`, `list_marker`, `task_done`, `task_todo`, `table_border`,
 `table_header`, `rule`, `footnote`, `image_placeholder`, `html`,
 `frontmatter`.
 
-**`[hints]`** — `label`, the key drawn over a link in hint mode.
+**`[hints]`**: `label`, the key drawn over a link in hint mode.
 
 ### Code blocks
 
@@ -169,7 +169,7 @@ background is unreadable.
 ## Checking one
 
 `perga --check-config` reports a theme that cannot be found or cannot be
-parsed. A theme that fails to load leaves `dark` in place and warns — perga
+parsed. A theme that fails to load leaves `dark` in place and warns; perga
 opens the vault either way.
 
 Two things worth checking by hand, because no test can:

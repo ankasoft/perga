@@ -7,7 +7,7 @@ and a remap in `[keys]` moves all three at once.
 ## Contexts
 
 The same key means different things depending on what has focus. Lookup tries
-the focused context first, then **Global** — except in **Editing**, which
+the focused context first, then **Global**, except in **Editing**, which
 inherits nothing at all.
 
 | Context | When it applies |
@@ -18,13 +18,13 @@ inherits nothing at all.
 | Editing | The tab is in edit mode |
 
 In edit mode the text area owns every key the **Editing** context does not
-claim, so `j` types a `j` rather than scrolling — and so does `q`, which is
+claim, so `j` types a `j` rather than scrolling, and so does `q`, which is
 `quit` everywhere else. That is why **Editing** does not inherit **Global**:
 a document you are writing must be able to contain the letter `q`.
 
 `Ctrl+C` is the exception, and it is handled before the keymap ever sees it,
-so there is always a way out. In an overlay — help, the
-quick switcher, find, a prompt, a confirmation, hint mode — the overlay owns
+so there is always a way out. In an overlay (help, the
+quick switcher, find, a prompt, a confirmation, hint mode) the overlay owns
 every key except `Esc`, which closes it, and `Ctrl+C`, which always quits.
 
 ## Global
@@ -168,7 +168,7 @@ order. Named keys are `enter`, `esc`, `tab`, `backtab`, `space`, `backspace`,
 `delete`, `insert`, `home`, `end`, `pageup`, `pagedown`, `up`, `down`, `left`,
 `right`, and `f1`–`f12`. Anything else is the character itself.
 
-Never write `"gt"` for a sequence — it is ambiguous with a named key and is
+Never write `"gt"` for a sequence: it is ambiguous with a named key and is
 rejected with a warning. Write `"g t"`.
 
 When two actions end up on one key the last definition wins and a warning names

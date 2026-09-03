@@ -1,7 +1,7 @@
 //! Edit mode, saving, creating and renaming files, and live reload.
 //!
 //! Every acceptance criterion in Sections 9.8 and 9.11 is asserted here apart
-//! from the `$EDITOR` handoff, which needs a pseudo-terminal — see
+//! from the `$EDITOR` handoff, which needs a pseudo-terminal; see
 //! `docs/decisions.md`.
 
 mod common;
@@ -280,7 +280,7 @@ fn a_paste_is_one_undo_step() {
     let after = app.tab().editor.as_ref().unwrap().textarea.lines().len();
     assert!(after < 10, "one paste must be one undo, not five thousand");
 
-    // Not asserted as a gate — recorded because Section 9.8 names 100 ms.
+    // Not asserted as a gate, but recorded because Section 9.8 names 100 ms.
     eprintln!("pasting 5,000 lines took {took:?}");
 }
 

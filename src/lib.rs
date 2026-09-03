@@ -1,4 +1,4 @@
-//! `perga` — a terminal Markdown browser.
+//! `perga`, a terminal Markdown browser.
 //!
 //! The binary in `main.rs` is a thin wrapper: everything it does lives here, so
 //! that the whole application can be driven from integration tests without a

@@ -185,7 +185,7 @@ fn an_unreadable_path_is_a_status_message_rather_than_a_crash() {
 /// M3's definition of done: with a large vault, the first frame is painted
 /// before the walk finishes.
 ///
-/// Asserted as an ordering, not a wall-clock time — a shared CI runner cannot
+/// Asserted as an ordering, not a wall-clock time: a shared CI runner cannot
 /// be trusted with the latter, and the ordering is what actually matters.
 #[test]
 fn the_first_frame_is_painted_before_the_walk_finishes() {
@@ -194,7 +194,7 @@ fn the_first_frame_is_painted_before_the_walk_finishes() {
     app.set_vault_root(&root);
 
     // The tree is empty and the walk has not finished, and a frame still
-    // paints — this is exactly the state the real application starts in.
+    // paints; this is exactly the state the real application starts in.
     assert!(app.vault.tree.is_empty());
     assert!(!app.vault.tree.complete);
     let first = frame(&mut app, 120, 40);

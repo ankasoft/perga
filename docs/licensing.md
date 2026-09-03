@@ -56,8 +56,8 @@ replace the dependency rather than widen the list. The one documented exception 
 
 `deny.toml` also enforces:
 
-- **Advisories** — any RUSTSEC vulnerability fails the build. Unmaintained-crate
+- **Advisories**: any RUSTSEC vulnerability fails the build. Unmaintained-crate
   advisories are reported for direct dependencies only.
-- **Bans** — no TLS stack, no HTTP client, no async runtime, no `onig`. perga has
+- **Bans**: no TLS stack, no HTTP client, no async runtime, no `onig`. perga has
   no network feature and must not grow one by accident.
-- **Sources** — crates.io only. No git dependencies.
+- **Sources**: crates.io only. No git dependencies.

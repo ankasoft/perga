@@ -367,7 +367,7 @@ impl RenderedDocument {
     ///
     /// Code blocks render one line per source line, so the correspondence there
     /// is exact. Prose is re-wrapped, so its source lines are distributed over
-    /// the rendered ones in proportion — which is right at the block's
+    /// the rendered ones in proportion, which is right at the block's
     /// boundaries and close everywhere between them.
     fn record_origins(
         &mut self,
@@ -672,7 +672,7 @@ impl Renderer {
     /// the first version and nothing used it.
     ///
     /// The bar is put back *after* wrapping, so it runs down every line of a
-    /// quote rather than marking only the first — which is the whole reason a
+    /// quote rather than marking only the first, which is the whole reason a
     /// quote is drawn with a bar rather than a prefix.
     fn render_quote_bars(&self, lines: Vec<Line<'static>>, width: u16) -> Vec<Line<'static>> {
         let mut out = Vec::with_capacity(lines.len());
@@ -879,8 +879,8 @@ fn strip_heading_marker(line: Line<'static>) -> Line<'static> {
 /// Drop the ` (destination)` that `tui-markdown` appends after a link label.
 ///
 /// Read mode does not show markup, and the destination is not markup the reader
-/// asked for. It is emitted as a recognisable triple — an unstyled `" ("`, the
-/// destination in the link style, an unstyled `")"` — which is what this
+/// asked for. It is emitted as a recognisable triple: an unstyled `" ("`, the
+/// destination in the link style, an unstyled `")"`, which is what this
 /// matches. The target itself is not lost: links are extracted from the source
 /// separately, where they can be resolved properly.
 fn strip_link_destination(line: Line<'static>) -> Line<'static> {
@@ -1051,7 +1051,7 @@ fn split_at_width(text: &str, room: usize, line_is_empty: bool) -> usize {
     match last_space {
         Some(at) => at,
         // A word longer than the whole line has to be broken, but only once the
-        // line is empty — otherwise it would be broken twice over.
+        // line is empty; otherwise it would be broken twice over.
         None if line_is_empty => fits,
         None => 0,
     }
@@ -1515,7 +1515,7 @@ mod tests {
 
     /// `tui-markdown` passes `---` through as three characters. A rule is a
     /// line, and the theme has had a `rule` key for it since the first
-    /// version — unused until this.
+    /// version, unused until this.
     #[test]
     fn a_thematic_break_is_drawn_as_a_line() {
         let document = Document::scratch("before\n\n---\n\nafter\n");
@@ -1612,7 +1612,7 @@ mod tests {
     }
 
     /// The bar is what a quote is drawn with instead of a prefix, so it has to
-    /// run down every line — putting it back before wrapping would mark only
+    /// run down every line; putting it back before wrapping would mark only
     /// the first.
     #[test]
     fn the_bar_runs_down_a_wrapped_quote() {
@@ -1708,8 +1708,8 @@ mod tests {
         assert_eq!(lines[at].style.fg, theme.markdown.h1.fg);
     }
 
-    /// A paragraph beginning with a `#` that is not a heading — an escaped
-    /// one, or a fragment link — must not lose it.
+    /// A paragraph beginning with a `#` that is not a heading (an escaped
+    /// one, or a fragment link) must not lose it.
     #[test]
     fn only_a_heading_loses_a_leading_hash() {
         let document = Document::scratch("\\# not a heading\n");

@@ -166,8 +166,8 @@ fn edit_mode_and_confirm() {
 ///
 /// Text rather than style, like every other snapshot here, so the diff is
 /// readable; the styles themselves are asserted in `src/theme`. What this
-/// catches is a theme that changes the *layout* — a wider marker, a longer
-/// label — rather than only the colours.
+/// catches is a theme that changes the *layout*: a wider marker, a longer
+/// label, rather than only the colours.
 #[test]
 fn every_builtin_theme_renders() {
     for name in ["dark", "light", "high-contrast"] {
@@ -534,7 +534,7 @@ fn no_color_strips_the_styling_from_piped_output() {
     assert!(!text.contains('\x1b'), "NO_COLOR left an escape behind");
 }
 
-/// Section 9.12: the theme applies in print mode. It did not — print mode
+/// Section 9.12: the theme applies in print mode. It did not: print mode
 /// built its own `dark` and never read the configuration at all, so
 /// `--theme`, `theme.name`, `general.wrap` and every `[ui]` key were ignored
 /// by `--print`.

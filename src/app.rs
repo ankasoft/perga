@@ -1753,7 +1753,7 @@ impl App {
             Ok(document) => {
                 // A new note goes in its own tab: creating one is not the
                 // same as leaving whatever was being read. A tab showing the
-                // welcome screen is the exception — it is already empty.
+                // welcome screen is the exception; it is already empty.
                 let wants_tab = self.tab().doc.is_some();
 
                 if wants_tab && self.open_in_background_tab(document.clone()) {
@@ -1938,7 +1938,7 @@ impl App {
                 self.close_overlay();
                 buffer::clear_recovery(&self.vault.root, &path);
             }
-            // Anything else — `c`, `n`, `Esc` — leaves things as they were.
+            // Anything else (`c`, `n`, `Esc`) leaves things as they were.
             _ => self.close_overlay(),
         }
     }
@@ -2878,7 +2878,7 @@ impl App {
         let label = document.label().to_string();
         let mut tab = Tab::with_document(document);
         // A background tab has never been drawn, so it has no measured layout
-        // and starts at the top — which is where a freshly opened document is
+        // and starts at the top, which is where a freshly opened document is
         // anyway.
         tab.scroll = 0;
 
@@ -3077,7 +3077,7 @@ impl App {
         }
 
         let Some(sink) = self.index_sink.clone() else {
-            // No sink means no event loop — a test, or print mode. Indexing
+            // No sink means no event loop: a test, or print mode. Indexing
             // synchronously there would be a surprise; leaving it unbuilt is
             // what the Links mode already knows how to show.
             return;

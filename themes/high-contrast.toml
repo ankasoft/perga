@@ -6,12 +6,12 @@ code_theme = "base16-ocean.dark"
 # ANSI-16 only: every colour here is one of the sixteen names, so this theme
 # renders identically on a terminal with no 256-colour or truecolour support
 # and follows whatever palette the user has configured there. Nothing in it
-# relies on colour alone — every distinction also carries bold, dim, underline,
+# relies on colour alone: every distinction also carries bold, dim, underline,
 # or reverse video.
 #
 # Every key that `dark` gives a colour to is given one here too, including the
 # backgrounds. A theme file inherits what it does not mention, and a key left
-# out would quietly pull a truecolour value in from `dark` — which the test in
+# out would quietly pull a truecolour value in from `dark`, which the test in
 # `src/theme/builtin.rs` exists to catch.
 
 [ui]

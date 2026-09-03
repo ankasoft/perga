@@ -1,7 +1,7 @@
 //! Pick-one-of-many overlays: the wiki-link disambiguation list, and in
 //! Section 9.7 the fuzzy quick switcher.
 //!
-//! Both are the same shape — a title, a list, one selected row — so they share
+//! Both are the same shape (a title, a list, one selected row) so they share
 //! a widget rather than growing two that drift apart.
 
 use ratatui::layout::Rect;

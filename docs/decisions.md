@@ -6,7 +6,7 @@ milestone section.
 
 ---
 
-## M0 — Repository foundation
+## M0: Repository foundation
 
 ### D1: MSRV pinned to 1.95
 
@@ -18,8 +18,9 @@ duplicating it, so bumping the manifest bumps the CI job.
 ### D2: `tui-textarea` replaced with `tui-textarea-2`
 
 Section 5.2 mandates `tui-textarea` for the editor widget. The published
-`tui-textarea` 0.7.0 depends on `ratatui ^0.29`, while `tui-markdown` 0.3.9 — also
-mandated — is built on `ratatui-core` 0.1.2, the 0.30 line. Holding both would put
+`tui-textarea` 0.7.0 depends on `ratatui ^0.29`, while `tui-markdown` 0.3.9,
+also mandated, is built on `ratatui-core` 0.1.2, the 0.30 line. Holding both
+would put
 two incompatible `ratatui` versions in the tree: the textarea widget could not be
 rendered into a frame produced by the other version, and the duplicate would be
 flagged by the `bans` section of `deny.toml`.
@@ -55,8 +56,9 @@ content_hash)` cache. `tui-markdown` is therefore taken with
 Section 16.6 lists the permissive licences to allow and instructs that a dependency
 introducing a licence outside the list be replaced rather than the list widened.
 `notify`, which Section 5.2 mandates for filesystem watching, is published under
-`CC0-1.0`. CC0-1.0 is a public-domain dedication — strictly more permissive than
-every other entry on the list, with no attribution or reciprocity obligation — and
+`CC0-1.0`. CC0-1.0 is a public-domain dedication, strictly more permissive than
+every other entry on the list, with no attribution or reciprocity obligation,
+and
 replacing a dependency the specification names is a larger deviation than admitting
 it. The entry is annotated in `deny.toml` with the crate that requires it.
 
@@ -112,7 +114,7 @@ Every one of these is exercised by the Linux CI jobs, which are the authority.
 
 ---
 
-## M1 — Terminal shell and event loop
+## M1: Terminal shell and event loop
 
 ### D10: a library target alongside the binary
 
@@ -130,7 +132,7 @@ unchanged.
 `ratatui`'s `Terminal::clear` reads the cursor position back from the terminal so
 it can restore it afterwards. That is a full round trip: it costs a meaningful part
 of the 50 ms first-frame budget in Section 14, and on a terminal that does not
-answer the query it fails outright — which is how it was found, in a pseudo-
+answer the query it fails outright, which is how it was found, in a pseudo-
 terminal harness where startup aborted with "The cursor position could not be read
 within a normal duration".
 
@@ -143,7 +145,7 @@ the frame must be repainted rather than diffed.
 
 The first version returned the error from a partially completed setup, leaving raw
 mode and the alternate screen enabled with no handle for the caller to clean up
-with — the exact failure Section 13 forbids. `setup` now wraps its work and calls
+with, the exact failure Section 13 forbids. `setup` now wraps its work and calls
 `restore` before returning any error, and `main` calls `restore` on its error path
 as well. `restore` is idempotent, so the overlap is harmless.
 
@@ -158,7 +160,8 @@ away could otherwise be left with no way out of a wedged overlay.
 
 Section 8.3 requires the help overlay to be generated from the keymap so it cannot
 drift. The same argument applies to the two other places that show a key to the
-user — the status bar hint row and the welcome screen's onboarding block — so both
+user (the status bar hint row and the welcome screen's onboarding block), so
+both
 look their keys up through `Keymap::binding_for` rather than hardcoding them. A
 remap moves all three together.
 
@@ -191,20 +194,20 @@ The terminal must be usable afterwards and the panic message readable.
 
 Section 14 requires 0% CPU at idle. Measured by running the release binary under a
 pseudo-terminal, leaving it untouched for ten seconds, and reading accumulated CPU
-time from `ps`: 0.00 seconds. This holds by construction — a dedicated input
+time from `ps`: 0.00 seconds. This holds by construction, from a dedicated input
 thread and a single blocking `recv` on the main loop, with no poll timeout
-anywhere — rather than by tuning.
+anywhere, rather than by tuning.
 
 ---
 
-## M2 — Markdown rendering pipeline
+## M2: Markdown rendering pipeline
 
 ### D18: link destinations are stripped from the rendered text
 
 `tui-markdown` renders `[label](target)` as `label (target)` and offers no
 option to suppress the destination. Section 8.1 says markup is never shown in
 read mode, and its layout sketch shows link labels alone. The wrapper therefore
-removes the destination, which `tui-markdown` emits as a recognisable triple —
+removes the destination, which `tui-markdown` emits as a recognisable triple:
 an unstyled `" ("`, the destination in the link style, an unstyled `")"`.
 
 Nothing is lost by this: links are extracted from the *source* in M4, where they
@@ -261,7 +264,7 @@ both handled in the same adapter layer as D18:
 
 The first version of `RenderedDocument` reset itself when the width or the
 number of blocks changed. Editing a paragraph changes neither, so the layout
-happily served stale measurements — caught by the test that asserts an edit
+happily served stale measurements, caught by the test that asserts an edit
 re-renders exactly one block, which re-rendered zero. `Document` now carries a
 hash of its source and the layout resets when that changes. The block cache
 survives the reset, so the 199 blocks an edit did not touch are still hits.
@@ -272,7 +275,7 @@ Block heights are only known after rendering, so the total is unknown until the
 whole document has been measured, and measurement is chunked so that jumping to
 the end of a 100,000-line document costs several frames rather than one long
 freeze. Until the total is known, scrolling is clamped to what *has* been
-measured, the title bar shows no position, and the scrollbar is indeterminate —
+measured, the title bar shows no position, and the scrollbar is indeterminate,
 rather than showing a guessed total that jumps when the guess is corrected.
 
 ### D25: benchmark results
@@ -299,7 +302,7 @@ visible screen costs and nothing more. A scrolled frame against a warm cache is
 These are not the Linux numbers. Section 14's targets are re-measured on Linux
 in D89.
 
-## M3 — Vault walking and the files sidebar
+## M3: Vault walking and the files sidebar
 
 ### D26: the walk finds everything; the tree decides what to show
 
@@ -317,7 +320,7 @@ to; it is set once, by configuration or by `--no-gitignore`.
 `ignore` can walk in parallel. It is not used here. The tree sorts what it
 receives regardless of arrival order, and the streaming in batches already
 hides the walk behind the first frame, so parallelism would buy wall clock on
-exactly the vaults where it is least visible — at the cost of a second channel
+exactly the vaults where it is least visible, at the cost of a second channel
 and a harder cancellation story. Revisit if a vault is ever measured where the
 tree is still filling in seconds after start-up.
 
@@ -328,7 +331,7 @@ development machine and failed on a GitHub runner, because `ignore` yields
 entries in whatever order the filesystem returns them and the search reports
 hits in walk order.
 
-The tree sorts what it receives regardless, so this never showed there — but
+The tree sorts what it receives regardless, so this never showed there, but
 search results that differ between two machines looking at the same vault are
 results nobody can reproduce, quite apart from being unsnapshottable.
 `sort_by_file_path` costs a sort per directory, which the walk is already
@@ -350,7 +353,7 @@ the channel is not the bottleneck.
 ### D30: the tree filter is a line in the sidebar, not an overlay
 
 Section 8.3 lists the prompt overlay as serving new-file paths, rename, and the
-project search query — not the tree filter. The filter is drawn as a line at the
+project search query, not the tree filter. The filter is drawn as a line at the
 top of the files mode, above the rows it is filtering, so what was typed and
 what it matched are visible together. It shares the [`TextInput`] implementation
 with the prompt overlay, and, like edit mode, it owns every key it can use while
@@ -380,7 +383,7 @@ the selected *node* rather than its row index means a walk finishing does not
 move the user's cursor. When a toggle or a filter hides the selected node, the
 selection falls back to the first visible row rather than vanishing.
 
-## M4 — Link navigation and history
+## M4: Link navigation and history
 
 ### D34: a leading `/` is tried against the vault root first
 
@@ -410,7 +413,7 @@ point somewhere the author never named. `..` is therefore collapsed lexically.
 ### D37: opening a document keeps the tab's history
 
 `App::open` replaces the document, the layout, the scroll offsets, and the link
-focus — everything about the *view*. The history and the read-or-edit mode
+focus: everything about the *view*. The history and the read-or-edit mode
 belong to the tab, not to the document in it, and survive. This is what makes
 `Alt+←` work after following a link, and it is the reason `open` does not
 simply assign a fresh `Tab`.
@@ -426,7 +429,7 @@ nowhere to go back to.
 ### D39: hint labels are drawn over the document, not in a panel
 
 A label only means anything on top of the link it belongs to. Hint mode is an
-overlay in the focus sense — it owns input until it closes — but it is painted
+overlay in the focus sense (it owns input until it closes) but it is painted
 into the viewport's own area. The focused-link highlight is suppressed while it
 is open: two cues competing for the same links is worse than one.
 
@@ -436,7 +439,7 @@ Typing a key with no matching label is a typo. It is discarded and hint mode
 stays open, rather than cancelling the mode and leaving the reader to press `f`
 again.
 
-## M5 — Tabs
+## M5: Tabs
 
 ### D41: the tab bar window follows the active tab
 
@@ -456,7 +459,7 @@ so the middle goes instead.
 
 A background tab is only meaningful for a document. An anchor has nowhere else
 to go, a directory is revealed in the tree, and an external URL belongs to the
-desktop opener — so `Ctrl+Enter` falls through to the ordinary follow rather
+desktop opener, so `Ctrl+Enter` falls through to the ordinary follow rather
 than opening an empty tab or refusing.
 
 ### D44: `dirty` lives on the tab, not on the editor
@@ -466,7 +469,7 @@ the active one has unsaved edits. Keeping the flag on `Tab` means neither has to
 reach into an editor state that only exists while a tab is being edited. M9
 sets it; M5 draws it.
 
-## M6 — Outline mode and in-document find
+## M6: Outline mode and in-document find
 
 ### D45: the sidebar movement actions are shared by every mode
 
@@ -484,9 +487,9 @@ outline keeps its own selection index and the tree keeps its own selected node.
 
 ### D47: the highlighted heading and the selected heading are different things
 
-The outline highlights the heading the reader is *inside* — the last one whose
+The outline highlights the heading the reader is *inside*: the last one whose
 rendered line is at or above the top of the viewport, which is what "the
-section I am reading" means when a section is taller than the screen — and it
+section I am reading" means when a section is taller than the screen. It
 separately marks the heading the reader has *selected* with the keyboard. One
 moves with the scroll position, the other with `j` and `k`.
 
@@ -498,7 +501,7 @@ highlighting runs over the rendered text of the visible lines instead, because
 the reader is looking at rendered text and a highlight landing on a different
 run of characters is worse than none.
 
-The two can disagree: a query containing Markdown punctuation — `](`, `**` —
+The two can disagree: a query containing Markdown punctuation, `](` or `**`,
 counts in the source and highlights nowhere. The alternative is measuring the
 whole document before the first search can report a count, which costs more
 than the case is worth.
@@ -516,7 +519,7 @@ An incremental search that jumps back to the first match on every keystroke
 fights the reader as they narrow a query. After a refresh the current match
 becomes the nearest one at or after where they already were.
 
-## M7 — Wiki-links and backlinks
+## M7: Wiki-links and backlinks
 
 ### D51: wiki-links are scanned for, not parsed
 
@@ -530,7 +533,7 @@ is what keeps a `[[Page]]` written inside a fenced block from becoming a link.
 ### D52: `![[Page]]` links rather than embeds
 
 Some tools read the bang prefix as "transclude this page here". perga does not
-embed, and a link to the page is the honest fallback — silently dropping the
+embed, and a link to the page is the honest fallback; silently dropping the
 syntax would lose the reference altogether.
 
 ### D53: the index knows files, and backlinks are computed from them
@@ -546,13 +549,13 @@ memoised reverse map; at 10,000 files it does not.
 Section 9.6 lists them as separate steps, which means a vault holding both
 `Setup.md` and `setup.md` is not ambiguous when the link says which. Only when
 no exact-case candidate exists does the case-insensitive set become the answer,
-and then all of it does — including, correctly, an ambiguity between two files
+and then all of it does, including, correctly, an ambiguity between two files
 that differ only in case.
 
 ### D55: following a wiki-link before the index is ready waits
 
 Resolving against a half-built index would send the reader to an arbitrary
-page — or report a page as missing that is about to be found — and look like a
+page, or report a page as missing that is about to be found, and look like a
 bug in their own notes. Until the index is ready the status bar says
 `Still indexing…`, and the links sidebar shows the progress behind that.
 
@@ -567,18 +570,18 @@ being added to make the old name work.
 ### D57: the picker widget is shared
 
 The disambiguation overlay and the quick switcher of Section 9.7 are the same
-shape — a title, a list, one selected row — so they share `ui::overlay::switcher`
+shape (a title, a list, one selected row) so they share `ui::overlay::switcher`
 rather than growing two implementations that drift apart.
 
-## M8 — Search
+## M8: Search
 
 ### D58: the search walks the vault itself
 
 The searcher runs its own `ignore` walk rather than reading the tree the
 sidebar holds. The tree is main-thread state and the search is not on the main
 thread; sharing it would need a lock on every frame. Both walks use the same
-`WalkOptions`, so search and tree agree about what is in the vault — including
-the ignore rules — without either waiting on the other.
+`WalkOptions`, so search and tree agree about what is in the vault, including
+the ignore rules, without either waiting on the other.
 
 ### D59: a new search cancels the old one by dropping its handle
 
@@ -598,7 +601,7 @@ between keystrokes for its scratch buffers.
 
 Section 8.3 asks for the recent list on an empty query. `Fuzzy::search`
 therefore returns nothing for an empty query rather than "everything,
-unordered" — the two are different answers and only one of them is useful.
+unordered": the two are different answers and only one of them is useful.
 
 ### D62: the search state belongs to the window, not to a tab
 
@@ -613,13 +616,13 @@ default, and a reader who wants one regular expression writes it between
 slashes without changing their configuration. An invalid pattern is reported in
 the sidebar and the previous results stay put.
 
-## M9 — Editor, file operations, and live reload
+## M9: Editor, file operations, and live reload
 
 ### D64: dirty is a content comparison, not a flag
 
 The buffer hashes its lines and compares against the hash of what was last on
 disk. Undoing back to the saved text therefore makes the tab clean again, which
-an "edited" flag would not — and the reader who undid their way back to where
+an "edited" flag would not, and the reader who undid their way back to where
 they started should not be asked whether to save nothing.
 
 ### D65: the mtime conflict check has a one-second tolerance
@@ -631,8 +634,8 @@ learns to dismiss is worse than none.
 ### D66: the atomic write is a sibling, not a temporary directory
 
 `rename` is only atomic within one filesystem, so the temporary file is written
-beside its target. It is named `.<file>.perga-<pid>.tmp` — dotted, so an
-interrupted save leaves nothing the tree shows by default — and removed on
+beside its target. It is named `.<file>.perga-<pid>.tmp`: dotted, so an
+interrupted save leaves nothing the tree shows by default, and removed on
 every failure path.
 
 ### D67: `$EDITOR` handoff belongs to the event loop
@@ -679,20 +682,20 @@ every keystroke's cost for a case that happens once.
 
 Driving a real `vim` needs a pseudo-terminal, which is a dependency and a class
 of flakiness this project does not otherwise have. `hand_over` is small, and
-every part of it that can be tested without one — resolving the command from
+every part of it that can be tested without one, resolving the command from
 configuration and the environment, refusing when there is none, refusing while
-the buffer is dirty — is. **Verified by hand** on this machine with
+the buffer is dirty, is. **Verified by hand** on this machine with
 `EDITOR=vim`: the editor takes the screen, exits cleanly, and perga repaints
 with the file reloaded. A reviewer on another platform should repeat it.
 
-## M10 — Configuration, theming, session
+## M10: Configuration, theming, session
 
 ### D73: layers are merged as TOML, and typed once at the end
 
 Each layer is parsed into a `toml::Table` and merged key by key before anything
 is deserialised. Typing each layer separately and then merging the typed values
-would need every field to become an `Option` — the layer that did not mention a
-key must not overwrite the one that did — and would double the schema.
+would need every field to become an `Option`, since the layer that did not
+mention a key must not overwrite the one that did, and would double the schema.
 
 ### D74: an invalid value is isolated by retrying key by key
 
@@ -713,7 +716,7 @@ remapping is for.
 
 ### D76: `[keys]` action names are derived, not listed
 
-The name is the snake-cased variant — `toggle_sidebar`, `scroll_top` — computed
+The name is the snake-cased variant (`toggle_sidebar`, `scroll_top`) computed
 from the action rather than written in a second table beside it, so a new action
 cannot be added without a name and the two cannot drift. `SetSidebarMode` is the
 one action carrying a payload, and it is spelled `sidebar_mode_<mode>`.
@@ -729,7 +732,7 @@ the thread for the reply and hoping `crossterm` does not swallow the escape
 sequence as a key press.
 
 So `theme.name = "auto"` reads `COLORFGBG`, which rxvt, Konsole, and several
-others set, and uses `dark` otherwise — which is what 11.3 asks for when
+others set, and uses `dark` otherwise, which is what 11.3 asks for when
 detection fails. A user on a light terminal that sets no `COLORFGBG` writes
 `theme.name = "light"` once. Revisit if `crossterm` grows a first-class
 terminal-query API.
@@ -747,7 +750,7 @@ A theme file inherits what it does not mention, and `dark` is the base. A key
 left out of `high-contrast` would quietly pull a truecolour value in from
 `dark`, which defeats the whole point of the theme. The test in
 `src/theme/builtin.rs` walks every resolved style and fails on anything outside
-the sixteen ANSI colours — that is what caught `selection` and `code_inline`.
+the sixteen ANSI colours; that is what caught `selection` and `code_inline`.
 
 ### D80: the shipped default config is a file, not a string literal
 
@@ -762,13 +765,13 @@ Restoring is best-effort by design. A tab pointing at a file that has since been
 deleted or renamed is dropped rather than opened empty, and a session that ends
 up with no tabs at all leaves the welcome screen alone.
 
-## M11 — Documentation, packaging, release
+## M11: Documentation, packaging, release
 
 ### D82: `release.yml` is generated, and CI checks that it still is
 
 `dist init` produced it from `dist-workspace.toml`, and it is committed
 unmodified. A `dist generate --check` job in `ci.yml` fails if someone edits the
-workflow by hand — the next `dist generate` would silently undo them, and a
+workflow by hand: the next `dist generate` would silently undo them, and a
 release pipeline that quietly reverts is worse than one that fails loudly.
 
 `aarch64` needed no configuration: `dist` reaches for `cargo-zigbuild` itself
@@ -791,7 +794,7 @@ do not vary by target and a cross-built binary cannot be run to produce them.
 Found by the first release run, which failed in both build jobs with
 `failed to copy asset from target/assets/perga.1`. `dist` collects the
 `include` paths in the **local** build job, while `[[dist.extra-artifacts]]`
-commands run in the separate **global** job — so the files did not exist yet
+commands run in the separate **global** job, so the files did not exist yet
 when the archive was assembled.
 
 `ci.github.build-setup` names a YAML fragment of extra steps injected into the
@@ -809,8 +812,8 @@ is not a valid workflow, and GitHub flags every one it finds in that directory.
 Found by exercising the released tarball: `perga note.md | head` printed
 `writing to stdout: Broken pipe` and exited 1. Section 9.12 exists for
 `perga README.md | less -R`, and pressing `q` in `less` produces exactly that.
-Print mode now treats `BrokenPipe` as the end of the job — no message, exit
-zero — which is what every other tool that writes to a pipe does.
+Print mode now treats `BrokenPipe` as the end of the job: no message, exit
+zero, which is what every other tool that writes to a pipe does.
 
 ### D83c: the installer puts the binary in `~/.local/bin`
 
@@ -818,7 +821,7 @@ zero — which is what every other tool that writes to a pipe does.
 a Rust toolchain, and wrong here: perga ships a static binary and its audience
 is terminal users. `~/.local/bin` is on `PATH` out of the box on current
 distributions, where `~/.cargo/bin` is only on `PATH` for someone who has
-already installed Rust — and telling everyone else to `source ~/.cargo/env`
+already installed Rust, and telling everyone else to `source ~/.cargo/env`
 before they can read a Markdown file is a poor first impression.
 
 `dist`'s installer has no way to install a man page or completions, so the
@@ -829,7 +832,7 @@ packages are for, and `README.md` says so beside the command.
 
 Found by the first person to run the released binary: they could not work out
 how to reach the file tree. The status bar advertised `Ctrl+B sidebar`, which
-*hides* it — so the one key labelled "sidebar" made the sidebar disappear, and
+*hides* it, so the one key labelled "sidebar" made the sidebar disappear, and
 nothing anywhere mentioned `Tab`.
 
 `Tab focus the file tree` is now the first hint in the status bar and on the
@@ -840,7 +843,7 @@ a new reader needs most is the last to go.
 ### D83e: the `Edit` context inherits nothing
 
 Reported by the first person to use edit mode, who asked the obvious question:
-you have bound single letters like `q` and `m` — what happens when I type them
+you have bound single letters like `q` and `m`: what happens when I type them
 into a document?
 
 They quit perga, opened the help overlay, and vanished, respectively. Keymap
@@ -851,14 +854,14 @@ context does not claim. The code contradicted its stated intent, and Section
 
 `Edit` now inherits nothing. `Ctrl+S`, `Esc`, `Ctrl+Z`, and `Ctrl+Y` are the
 whole of it; everything else is text. That also costs edit mode the `Global`
-bindings — `Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the rest — which is the intended
+bindings (`Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the rest), which is the intended
 trade: `Ctrl+W` deleting a word matters more inside a buffer than closing a
 tab, and `Ctrl+C` is handled before the keymap, so there is always a way out.
 
 ### D83f: every theme colour is held to WCAG AA, by a test
 
 Reported from real use: "I had trouble reading the text in the dark theme."
-Measured, and they were right — thirteen keys of the default theme sat at
+Measured, and they were right: thirteen keys of the default theme sat at
 3.36:1 or below, three of them with `dim` on top of that. Body text was fine
 at 12:1; it was everything *around* the document that could not be read: the
 sidebar's mode row, the path in the title bar, inactive tab labels, search
@@ -868,7 +871,7 @@ Section 11.2 asked for 4.5:1 only of the `light` theme's body text. That was
 too narrow a rule, and the gap it left is exactly what shipped.
 
 Both truecolour themes now clear **4.5:1 for anything carrying text and 3:1
-for a border or a rule** — the WCAG AA thresholds for text and for a
+for a border or a rule**, the WCAG AA thresholds for text and for a
 user-interface component. Two tests enforce it and name the offending key:
 one against each style's own surface, one against the selection background,
 because a selected row keeps its own foreground. The second caught four keys
@@ -885,7 +888,7 @@ That is also why it exists.
 
 The contrast fix in D83f measured the themes as written. It should have
 measured what terminals actually receive: `COLORTERM` is unset on plenty of
-them — including the one the report came from — and those get the ANSI-256
+them, including the one the report came from, and those get the ANSI-256
 approximation.
 
 Two problems, found by extending the test to the degraded palette.
@@ -893,7 +896,7 @@ Two problems, found by extending the test to the degraded palette.
 **The approximation was crude.** It decided "is this grey?" with a per-channel
 threshold and then snapped each channel to the colour cube. `#313244`, the dark
 theme's selection background, spans 19 across its channels, failed the grey
-test, and landed on `(95, 95, 95)` — twice as light as intended, which ate the
+test, and landed on `(95, 95, 95)`, twice as light as intended, which ate the
 contrast of every foreground drawn on it. The grey ramp had an entry 1 away.
 The page background `#1e1e2e` became pure black, 63 units off.
 
@@ -915,8 +918,9 @@ runtime". Nothing could override it at runtime: the field was written on every
 exit and read by nobody. Half a feature, and the half that was missing is the
 one a reader touches.
 
-`m t` cycles the three built-ins and then the theme directory, alphabetically —
-a directory's read order is not stable and a cycle has to be. Three decisions
+`m t` cycles the three built-ins and then the theme directory, alphabetically,
+because a directory's read order is not stable and a cycle has to be. Three
+decisions
 worth recording:
 
 **`auto` is not a stop.** It is a way of *choosing* a theme at startup; as a
@@ -950,12 +954,12 @@ A line *wider* than the viewport is deliberately left alone: clipping and the
 test for each half.
 
 Neither shows up in a text snapshot, because the snapshot helper trims trailing
-spaces — which is why both survived to a released version. The unit tests
+spaces, which is why both survived to a released version. The unit tests
 assert the styles.
 
 ### D83j: a block quote is drawn with a bar
 
-The third theme key that existed, was documented, and was used by nothing —
+The third theme key that existed, was documented, and was used by nothing,
 after `rule` and alongside it. `tui-markdown` passes a quote's `>` through as
 the character that was typed, and `blockquote_bar` was named for a bar that
 was never drawn.
@@ -967,14 +971,14 @@ bar per level, and the content is wrapped into what is left.
 
 Inline markup was checked at the same time and was already right: `**bold**`,
 `*italic*`, `~~struck~~`, `` `code` `` and links all render styled with their
-markers hidden. What still shows is `#` on headings — which the specification's
+markers hidden. What still shows is `#` on headings, which the specification's
 own layout sketch in Section 8.1 draws that way, so it stays until someone asks
 otherwise.
 
 ### D83k: `#` on a heading is configurable, and defaults to on
 
 Asked how it would look without them. With colour it is cleaner: a heading is
-already coloured and bold, so the `#` is redundant. Without colour it is not —
+already coloured and bold, so the `#` is redundant. Without colour it is not:
 `strip_colors` keeps modifiers, and every heading level in every built-in theme
 is *only* bold, so h1 through h6 collapse into each other and into an inline
 `**bold**` phrase. The `#` count is then the sole carrier of level.
@@ -992,7 +996,7 @@ Edit mode is unaffected either way: it shows the source in a text area, so the
 Found while checking the key above: setting it changed nothing under `--print`.
 `print_mode` built its own `Theme::dark()` and never called `Config::load`, so
 `--theme`, `theme.name`, `general.wrap`, and every `[ui]` key that affects
-rendering were silently ignored by print mode — against Section 9.12, which
+rendering were silently ignored by print mode, against Section 9.12, which
 says the theme applies there.
 
 It now loads the same five layers, with the document's own directory as the
@@ -1002,7 +1006,7 @@ redirecting it into a file does not want a warning in the middle of it.
 
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
-That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside
+That is what `dist` produces: `perga-x86_64-unknown-linux-musl.tar.xz`, inside
 a directory of the same name, with the version in the tag rather than the
 filename. The README, the PKGBUILD, and `docs/publishing.md` follow what the
 tool actually emits rather than what the specification's prose sketched.
@@ -1014,7 +1018,7 @@ application uses and writes it to `demo/social-preview-frame.txt`; two
 ImageMagick commands typeset it and overlay the wordmark. The layout, the tree,
 and the document in the image are genuinely perga's output.
 
-It is monochrome, because the capture is plain text — a photographic screenshot
+It is monochrome, because the capture is plain text; a photographic screenshot
 of a real terminal would carry the theme's colours and is a fine replacement.
 Both the frame and the commands are committed so the image can be regenerated
 without guessing at the geometry.
@@ -1058,7 +1062,7 @@ Recorded honestly, per the environment caveat in Section 17.
 - **`cargo deny check`.** Recorded in D87.
 - **The demo GIF.** `vhs` is not installed here and it needs `ttyd` and
   `ffmpeg`. `demo/demo.tape` is written, committed, and documented, and
-  `README.md` embeds `demo/demo.gif` — which does not exist yet. **The owner
+  `README.md` embeds `demo/demo.gif`, which does not exist yet. **The owner
   must run `cd demo && vhs demo.tape` once and commit the result**, or the
   image at the top of the README will be broken.
 - **A fresh container installing from the release tarball.** No container
@@ -1072,14 +1076,14 @@ Recorded honestly, per the environment caveat in Section 17.
 ### D87b: v0.1.0 and v0.1.1 are released
 
 Both tagged, built, and published. `v0.1.1` carries the closed-pipe fix and the
-installer path change; its artefacts were downloaded and checked here —
+installer path change; its artefacts were downloaded and checked here:
 checksums verify, the x86_64 binary is `static-pie linked`, it runs, and the
 one-line installer now lands the binary somewhere already on `PATH`.
 
 `packaging/PKGBUILD` carries `v0.1.1`'s real checksums. It has not been
 submitted to the AUR: that needs an AUR account and is the owner's to do.
 
-`cargo publish` has still not been run — see D87c.
+`cargo publish` has still not been run; see D87c.
 
 ### D87c: crates.io publication is the owner's call
 
@@ -1114,8 +1118,8 @@ For packagers, and so that a future addition is visibly a change:
 | `MPL-2.0` | `nucleo` and `option-ext`. File-level copyleft: permitted for a linked library, and not used for perga's own code |
 | `CC0-1.0` | `notify`, a public-domain dedication strictly more permissive than the rest |
 
-Several crates offer a licence that is *not* on the list alongside one that is
-— `ryu` is `Apache-2.0 OR BSL-1.0 OR MIT`, and the BurntSushi crates
+Several crates offer a licence that is *not* on the list alongside one that is:
+`ryu` is `Apache-2.0 OR BSL-1.0 OR MIT`, and the BurntSushi crates
 (`ignore`, `memchr`, `grep-*`) are `Unlicense OR MIT`. `cargo deny` takes the
 allowed half, which is why `BSL-1.0` and `Unlicense` are absent from the list
 and the check still passes.
@@ -1136,7 +1140,7 @@ Regenerate the report with `cargo deny check licenses`.
 | Open a 5 MB document | < 100 ms to first frame | **69 ms** (4.8 MB) |
 | Scroll a 100,000-line document | sustained 60 fps (16.6 ms) | **0.6 ms** per frame |
 | First search results, 10,000 files | < 200 ms | **47 ms** for the *whole* search |
-| Idle CPU | 0% | 0% by construction — one blocking `recv` |
+| Idle CPU | 0% | 0% by construction, one blocking `recv` |
 | Resident memory, 10,000-file vault | < 150 MB | not measured; see below |
 
 The criterion benchmarks behind them:
@@ -1160,7 +1164,7 @@ The criterion benchmarks behind them:
 
 Three of these are worth reading rather than skimming.
 
-**First frame is flat from 1,000 to 100,000 lines** — 2.68 ms to 2.89 ms. That
+**First frame is flat from 1,000 to 100,000 lines**, 2.68 ms to 2.89 ms. That
 is the windowed renderer doing what it is for: opening a document costs what
 the visible screen costs and nothing more.
 

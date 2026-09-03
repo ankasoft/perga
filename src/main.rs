@@ -207,7 +207,7 @@ fn print_mode(cli: &Cli) -> Result<bool, (anyhow::Error, u8)> {
 
     // Section 9.12: the theme applies in print mode. It is resolved from the
     // same five layers the TUI uses, with the document's own directory as the
-    // vault root — that is where a `.perga.toml` beside it would be.
+    // vault root: that is where a `.perga.toml` beside it would be.
     let root = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -375,7 +375,7 @@ fn run(cli: &Cli) -> anyhow::Result<u8> {
     match &target {
         Target::Vault(_) => {
             // Section 9.10: a session is restored only when perga was opened
-            // with no path — a named file is what the reader asked for.
+            // with no path; a named file is what the reader asked for.
             if cli.path.is_none() && !cli.no_session {
                 app.restore_session();
             }
