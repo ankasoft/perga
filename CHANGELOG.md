@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-09-03
+
+Three style keys had been defined in the themes and documented since the first
+version, and used by nothing. This is them.
+
+### Added
+
+- **`ui.show_heading_markers`**, default `true`. Turning it off hides the `#`
+  a heading is written with, leaving colour and weight to mark it. The default
+  stays on because `strip_colors` keeps modifiers but drops colour, and every
+  heading level in every built-in theme is *only* bold — so without the `#`,
+  h1 through h6 collapse into each other under `NO_COLOR`. Edit mode always
+  shows the source, marker included.
+
+### Fixed
+
+- **A thematic break is drawn as a line.** `---` was printed as three
+  characters; it is now a rule across the width, in the theme's `markdown.rule`
+  style.
+
+- **A code block's background reaches the edge.** A line's style only paints
+  the cells its spans occupy, so a short line left the background ending
+  mid-row and the block read as ragged text on a darker strip. Lines are padded
+  now; a line wider than the viewport is left for the viewport to clip and
+  mark.
+
+- **A block quote is drawn with a bar** in `markdown.blockquote_bar`, instead
+  of the `>` that was typed. The bar goes on after wrapping, so it runs down
+  every line of the quote, and nesting adds one per level.
+
+- **Print mode reads the configuration.** It built its own `dark` theme and
+  never called the config loader, so `--theme`, `theme.name`, `general.wrap`
+  and every `[ui]` key were ignored under `--print` — against Section 9.12,
+  which says the theme applies there. Configuration warnings go to stderr, so
+  they cannot land in the middle of a redirected document.
+
 ## [0.1.4] — 2026-09-03
 
 ### Added
@@ -190,7 +226,8 @@ The first release.
 - Deletion is deliberately not offered. Every other file operation can be
   undone; that one cannot.
 
-[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/ankasoft/perga/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/ankasoft/perga/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/ankasoft/perga/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ankasoft/perga/compare/v0.1.1...v0.1.2
