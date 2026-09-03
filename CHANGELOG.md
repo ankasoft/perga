@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-09-02
+
+### Fixed
+
+- **Typing in edit mode no longer runs commands.** `q` quit perga, `?` opened
+  the help overlay, and `m` disappeared as the start of a key sequence, because
+  the editing context fell back to the global bindings. It now inherits
+  nothing: `Ctrl+S`, `Esc`, `Ctrl+Z`, and `Ctrl+Y` are the whole of it and
+  everything else is text. `Ctrl+C` is handled before the keymap, so there is
+  always a way out.
+
+  This also means the global bindings — `Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the
+  rest — no longer reach the application from edit mode. That is the intended
+  trade: inside a buffer, `Ctrl+W` deleting a word matters more than closing a
+  tab.
+
+- The status bar and the welcome screen now say how to reach the file tree.
+  `Tab` was advertised nowhere, while the only key labelled "sidebar",
+  `Ctrl+B`, made the sidebar disappear. `Tab focus the file tree` comes first
+  in both, and the toggle is labelled `hide sidebar`.
+
 ## [0.1.1] — 2026-09-02
 
 ### Fixed
@@ -119,6 +140,7 @@ The first release.
 - Deletion is deliberately not offered. Every other file operation can be
   undone; that one cannot.
 
-[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/ankasoft/perga/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ankasoft/perga/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ankasoft/perga/releases/tag/v0.1.0
