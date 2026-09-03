@@ -1,12 +1,4 @@
-<!--
-  This is the social preview, standing in until the demo GIF is recorded:
-  `cd demo && vhs demo.tape`, then replace the line below with
-
-      ![perga](demo/demo.gif)
-
-  See demo/README.md.
--->
-![perga](demo/social-preview.png)
+![perga](demo/demo.gif)
 
 # perga
 
