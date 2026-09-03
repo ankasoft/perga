@@ -837,6 +837,24 @@ welcome screen, and the toggle is labelled `hide sidebar`. First in the list
 matters: hints are dropped from the right as the terminal narrows, so the one
 a new reader needs most is the last to go.
 
+### D83e: the `Edit` context inherits nothing
+
+Reported by the first person to use edit mode, who asked the obvious question:
+you have bound single letters like `q` and `m` — what happens when I type them
+into a document?
+
+They quit perga, opened the help overlay, and vanished, respectively. Keymap
+lookup fell back to `Global` from every context including `Edit`, while the
+module's own documentation said the text area owns every key the `Edit`
+context does not claim. The code contradicted its stated intent, and Section
+12 names this exact collision.
+
+`Edit` now inherits nothing. `Ctrl+S`, `Esc`, `Ctrl+Z`, and `Ctrl+Y` are the
+whole of it; everything else is text. That also costs edit mode the `Global`
+bindings — `Ctrl+O`, `Ctrl+T`, `Ctrl+B` and the rest — which is the intended
+trade: `Ctrl+W` deleting a word matters more inside a buffer than closing a
+tab, and `Ctrl+C` is handled before the keymap, so there is always a way out.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

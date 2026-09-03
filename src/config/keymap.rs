@@ -27,7 +27,9 @@ use crate::ui::sidebar::SidebarMode;
 
 /// Where a binding applies.
 ///
-/// Lookup order is the active context first, then [`KeyContext::Global`].
+/// Lookup order is the active context first, then [`KeyContext::Global`] —
+/// except in [`KeyContext::Edit`], which inherits nothing. See
+/// [`inherits_global`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum KeyContext {
     /// Applies wherever it is not shadowed by a more specific context.
@@ -528,6 +530,18 @@ pub fn default_bindings() -> Vec<BindingSpec> {
     ]
 }
 
+/// Whether a context falls back to [`KeyContext::Global`] when it has no
+/// binding of its own.
+///
+/// Every context does except [`KeyContext::Edit`]. Edit mode is deliberately
+/// sparse: the text area owns every key the `Edit` context does not claim, and
+/// inheriting `Global` there means typing `q` into a document quits perga and
+/// typing `?` opens the help overlay. Section 12 of the build specification
+/// calls this out as the place two key owners collide.
+fn inherits_global(context: KeyContext) -> bool {
+    context != KeyContext::Edit
+}
+
 /// The name an action is written as in a `[keys]` table.
 ///
 /// The snake-cased variant name, so `ToggleSidebar` is `toggle_sidebar` and
@@ -764,16 +778,24 @@ impl Keymap {
 
     /// Look up one complete sequence, trying `context` before `Global`.
     fn lookup(&self, context: KeyContext, sequence: &KeySequence) -> Option<&Action> {
-        self.bindings
-            .get(&(context, sequence.clone()))
-            .or_else(|| self.bindings.get(&(KeyContext::Global, sequence.clone())))
+        let own = self.bindings.get(&(context, sequence.clone()));
+
+        if !inherits_global(context) {
+            return own;
+        }
+
+        own.or_else(|| self.bindings.get(&(KeyContext::Global, sequence.clone())))
     }
 
     /// Whether `sequence` is a proper prefix of some binding in `context` or in
     /// `Global`.
     fn is_prefix(&self, context: KeyContext, sequence: &KeySequence) -> bool {
-        self.prefixes.contains_key(&(context, sequence.clone()))
-            || self
+        if self.prefixes.contains_key(&(context, sequence.clone())) {
+            return true;
+        }
+
+        inherits_global(context)
+            && self
                 .prefixes
                 .contains_key(&(KeyContext::Global, sequence.clone()))
     }

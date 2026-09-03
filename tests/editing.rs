@@ -321,6 +321,86 @@ fn a_signal_parks_unsaved_text_for_the_next_run() {
     perga::editor::buffer::clear_recovery(&root, &root.join("note.md"));
 }
 
+/// The text area owns every key the `Edit` context does not claim.
+///
+/// `q`, `?`, and `m` are bound in the `Global` context, and edit mode used to
+/// inherit `Global`: typing `q` into a document quit perga, `?` opened the
+/// help overlay, and `m` was swallowed as the start of a key sequence. Section
+/// 12 calls this out as the place two key owners collide.
+#[test]
+fn a_letter_bound_to_a_command_is_still_a_letter_in_edit_mode() {
+    let (mut app, root) = editing("letters", "note.md");
+    app.update(Action::EnterEditMode);
+
+    // Every single-letter binding that exists anywhere, typed into the buffer.
+    let typed = "qmab?jkGHLnNefioyr/.<>1234";
+    type_text(&mut app, typed);
+
+    assert!(!app.should_quit, "typing must never quit");
+    assert!(app.overlay.is_none(), "typing must not open an overlay");
+    assert_eq!(app.tab().mode, TabMode::Edit);
+
+    let line = app.tab().editor.as_ref().unwrap().textarea.lines()[0].clone();
+    assert!(
+        line.starts_with(typed),
+        "the buffer should hold what was typed, got {line:?}"
+    );
+
+    // ...and it really reaches the file.
+    app.update(Action::Save);
+    let written = std::fs::read_to_string(root.join("note.md")).unwrap();
+    assert!(written.starts_with(typed), "{written:?}");
+}
+
+/// The keys edit mode *does* claim still work.
+#[test]
+fn the_editing_context_still_owns_its_own_keys() {
+    let (mut app, _) = editing("edit-keys", "note.md");
+    app.update(Action::EnterEditMode);
+
+    type_text(&mut app, "x");
+    assert!(app.tab().dirty);
+
+    // `Ctrl+Z` is `suspend` in Global and `undo` in Edit; Edit wins.
+    let actions = perga::event::translate(
+        &mut app,
+        perga::app::Message::Input(crossterm::event::Event::Key(KeyEvent::new(
+            KeyCode::Char('z'),
+            KeyModifiers::CONTROL,
+        ))),
+    );
+    assert_eq!(actions, vec![Action::Undo]);
+    assert!(!app.should_suspend);
+
+    for (key, modifiers, expected) in [
+        (KeyCode::Char('s'), KeyModifiers::CONTROL, Action::Save),
+        (KeyCode::Esc, KeyModifiers::NONE, Action::Escape),
+        (KeyCode::Char('y'), KeyModifiers::CONTROL, Action::Redo),
+    ] {
+        let actions = perga::event::translate(
+            &mut app,
+            perga::app::Message::Input(crossterm::event::Event::Key(KeyEvent::new(key, modifiers))),
+        );
+        assert_eq!(actions, vec![expected], "{key:?} did not reach edit mode");
+    }
+}
+
+/// `Ctrl+C` is the one key that is never handed to the text area.
+#[test]
+fn ctrl_c_still_quits_from_edit_mode() {
+    let (mut app, _) = editing("ctrl-c", "note.md");
+    app.update(Action::EnterEditMode);
+
+    let actions = perga::event::translate(
+        &mut app,
+        perga::app::Message::Input(crossterm::event::Event::Key(KeyEvent::new(
+            KeyCode::Char('c'),
+            KeyModifiers::CONTROL,
+        ))),
+    );
+    assert_eq!(actions, vec![Action::Quit]);
+}
+
 // -- Creating and renaming ---------------------------------------------------
 
 /// Acceptance: `Ctrl+N` with `notes/ideas` creates `notes/ideas.md`, creating
