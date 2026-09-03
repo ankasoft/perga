@@ -971,6 +971,35 @@ markers hidden. What still shows is `#` on headings — which the specification'
 own layout sketch in Section 8.1 draws that way, so it stays until someone asks
 otherwise.
 
+### D83k: `#` on a heading is configurable, and defaults to on
+
+Asked how it would look without them. With colour it is cleaner: a heading is
+already coloured and bold, so the `#` is redundant. Without colour it is not —
+`strip_colors` keeps modifiers, and every heading level in every built-in theme
+is *only* bold, so h1 through h6 collapse into each other and into an inline
+`**bold**` phrase. The `#` count is then the sole carrier of level.
+
+So `ui.show_heading_markers`, default `true`. Nobody loses anything, and a
+reader on a colour terminal can turn it off. The specification's own layout
+sketch in Section 8.1 draws `# Authentication`, which is the other reason the
+default stays.
+
+Edit mode is unaffected either way: it shows the source in a text area, so the
+`#` is always there when you are writing.
+
+### D83l: print mode reads the configuration
+
+Found while checking the key above: setting it changed nothing under `--print`.
+`print_mode` built its own `Theme::dark()` and never called `Config::load`, so
+`--theme`, `theme.name`, `general.wrap`, and every `[ui]` key that affects
+rendering were silently ignored by print mode — against Section 9.12, which
+says the theme applies there.
+
+It now loads the same five layers, with the document's own directory as the
+vault root, because that is where a `.perga.toml` beside it would be.
+Configuration warnings go to **stderr**: stdout is the document, and a reader
+redirecting it into a file does not want a warning in the middle of it.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside

@@ -534,6 +534,57 @@ fn no_color_strips_the_styling_from_piped_output() {
     assert!(!text.contains('\x1b'), "NO_COLOR left an escape behind");
 }
 
+/// Section 9.12: the theme applies in print mode. It did not — print mode
+/// built its own `dark` and never read the configuration at all, so
+/// `--theme`, `theme.name`, `general.wrap` and every `[ui]` key were ignored
+/// by `--print`.
+#[test]
+fn print_mode_honours_the_theme_and_the_configuration() {
+    let exe = env!("CARGO_BIN_EXE_perga");
+    let path = common::vault().join("gfm.md");
+
+    let colours = |args: &[&str]| -> String {
+        let out = std::process::Command::new(exe)
+            .args(args)
+            .arg(&path)
+            .output()
+            .expect("the binary runs");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+
+    let dark = colours(&["--print", "--theme", "dark"]);
+    let light = colours(&["--print", "--theme", "light"]);
+
+    assert!(!dark.is_empty() && !light.is_empty());
+    assert_ne!(dark, light, "`--theme` did not reach print mode");
+}
+
+#[test]
+fn print_mode_honours_show_heading_markers() {
+    let exe = env!("CARGO_BIN_EXE_perga");
+    let dir = std::env::temp_dir().join(format!("perga-print-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+
+    let config = dir.join("config.toml");
+    std::fs::write(&config, "[ui]\nshow_heading_markers = false\n").unwrap();
+
+    let doc = dir.join("h.md");
+    std::fs::write(&doc, "# Heading\n\nbody\n").unwrap();
+
+    let run = |args: &[&str]| -> String {
+        let out = std::process::Command::new(exe)
+            .args(args)
+            .arg(&doc)
+            .env("NO_COLOR", "1")
+            .output()
+            .expect("the binary runs");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+
+    assert!(run(&["--print"]).contains("# Heading"));
+    assert!(!run(&["--print", "--config", config.to_str().unwrap()]).contains('#'));
+}
+
 /// A directory in print mode is a usage error, not a guess at a file.
 #[test]
 fn a_directory_piped_is_a_usage_error() {

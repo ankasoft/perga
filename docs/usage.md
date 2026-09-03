@@ -206,9 +206,11 @@ perga README.md | less -R        # the same, because stdout is not a terminal
 perga --print --wrap 72 note.md  # at a fixed width
 ```
 
-No alternate screen, no input, no mouse. The width is the terminal's when
-stdout is a TTY, otherwise `--wrap` if given, otherwise 80 columns. `NO_COLOR`
-is honoured. A directory in print mode is an error.
+No alternate screen, no input, no mouse. A hard wrap wins, whether it came from
+`--wrap` or from `general.wrap`; otherwise the width is the terminal's when
+stdout is a TTY, and 80 columns when it is not. The configuration applies here
+too — the theme, the wrap, and the `[ui]` keys that affect rendering — and
+`NO_COLOR` is honoured. A directory in print mode is an error.
 
 ## Other flags
 

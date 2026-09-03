@@ -205,16 +205,40 @@ fn print_mode(cli: &Cli) -> Result<bool, (anyhow::Error, u8)> {
         .with_context(|| format!("cannot read `{}`", path.display()))
         .map_err(|e| (e, EXIT_USAGE))?;
 
-    let mut theme = Theme::dark();
-    let colour = !no_color();
-    if !colour {
-        theme.strip_colors();
+    // Section 9.12: the theme applies in print mode. It is resolved from the
+    // same five layers the TUI uses, with the document's own directory as the
+    // vault root — that is where a `.perga.toml` beside it would be.
+    let root = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+
+    let mut config = Config::load(root, cli.config.as_deref(), cli.no_config);
+    if let Some(name) = &cli.theme {
+        config.theme.name.clone_from(name);
+    }
+    if let Some(wrap) = cli.wrap {
+        config.general.wrap = wrap;
     }
 
-    let width = print_width(cli);
+    let mut warnings = std::mem::take(&mut config.warnings);
+    let theme = resolve_theme(&config, &mut warnings);
+
+    // Warnings go to stderr: stdout is the document, and a reader piping it
+    // into a file does not want a configuration warning in the middle of it.
+    for warning in &warnings {
+        eprintln!("perga: {warning}");
+    }
+
+    let options = print::PrintOptions {
+        width: print_width(cli, config.general.wrap),
+        colour: !no_color(),
+        heading_markers: config.ui.show_heading_markers,
+    };
+
     let mut out = io::stdout().lock();
 
-    match print::print(&document, &theme, width, colour, &mut out) {
+    match print::print(&document, &theme, options, &mut out) {
         Ok(()) => Ok(true),
         // `perga note.md | head` and a reader quitting `less` early both close
         // the pipe mid-write. Every well-behaved Unix tool treats that as the
@@ -229,10 +253,10 @@ fn print_mode(cli: &Cli) -> Result<bool, (anyhow::Error, u8)> {
 
 /// The width print mode renders at.
 ///
-/// The terminal's when stdout is a TTY, otherwise `--wrap` if it was given,
-/// otherwise 80 columns.
-fn print_width(cli: &Cli) -> u16 {
-    if let Some(wrap) = cli.wrap.filter(|w| *w > 0) {
+/// A hard wrap wins, whether it came from `--wrap` or from `general.wrap`.
+/// Otherwise the terminal's width when stdout is a TTY, otherwise 80 columns.
+fn print_width(cli: &Cli, configured: u16) -> u16 {
+    if let Some(wrap) = cli.wrap.or(Some(configured)).filter(|w| *w > 0) {
         return wrap;
     }
 

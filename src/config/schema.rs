@@ -21,6 +21,12 @@ pub struct UiConfig {
     pub always_show_tabs: bool,
     /// Show line numbers in the viewport.
     pub show_line_numbers: bool,
+    /// Show the `#` a heading is written with.
+    ///
+    /// On by default. With it off a heading is told from body text by its
+    /// colour and weight alone, which is enough on a colour terminal and is
+    /// not enough under `NO_COLOR`, where every level collapses to bold.
+    pub show_heading_markers: bool,
     /// Show the status bar.
     pub show_status_bar: bool,
     /// Lines scrolled per mouse wheel notch.
@@ -39,6 +45,7 @@ impl Default for UiConfig {
             sidebar_default_mode: SidebarMode::Files,
             always_show_tabs: false,
             show_line_numbers: false,
+            show_heading_markers: true,
             show_status_bar: true,
             mouse_scroll_lines: 3,
             mouse: true,
@@ -329,6 +336,7 @@ mod tests {
         assert_eq!(ui.sidebar_width, 32);
         assert_eq!(ui.sidebar_default_mode, SidebarMode::Files);
         assert!(!ui.always_show_tabs);
+        assert!(ui.show_heading_markers);
         assert_eq!(ui.narrow_threshold, 80);
         assert_eq!(ui.mouse_scroll_lines, 3);
     }

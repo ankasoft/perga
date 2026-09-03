@@ -22,24 +22,47 @@ use crate::theme::Theme;
 /// The width used when there is no terminal to ask.
 pub const DEFAULT_WIDTH: u16 = 80;
 
+/// How print mode renders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrintOptions {
+    /// The column to wrap at.
+    pub width: u16,
+    /// False under `NO_COLOR`, in which case no escape sequence is written.
+    pub colour: bool,
+    /// Whether a heading keeps the `#` it was written with.
+    pub heading_markers: bool,
+}
+
+impl Default for PrintOptions {
+    fn default() -> Self {
+        PrintOptions {
+            width: DEFAULT_WIDTH,
+            colour: true,
+            heading_markers: true,
+        }
+    }
+}
+
 /// Render a document and write it to `out`.
-///
-/// `colour` is false under `NO_COLOR`, in which case the text is written with
-/// no escape sequences at all.
 pub fn print(
     document: &Document,
     theme: &Theme,
-    width: u16,
-    colour: bool,
+    options: PrintOptions,
     out: &mut impl Write,
 ) -> io::Result<()> {
+    let PrintOptions {
+        width,
+        colour,
+        heading_markers,
+    } = options;
+
     // No frame budget to protect here, so the syntax sets are loaded up front
     // rather than in the background: printing plain code and exiting before the
     // loader finished would be worse than waiting for it.
     let highlighter = Highlighter::new();
     highlighter.load_blocking();
 
-    let renderer = Renderer::new(theme, highlighter, width);
+    let renderer = Renderer::new(theme, highlighter, width).with_heading_markers(heading_markers);
     let mut layout = RenderedDocument::new();
 
     while !layout.resolve_all(document, &renderer) {}
@@ -170,7 +193,12 @@ mod tests {
     fn printed(source: &str, colour: bool) -> String {
         let document = Document::scratch(source);
         let mut out = Vec::new();
-        print(&document, &Theme::dark(), 40, colour, &mut out).unwrap();
+        let options = PrintOptions {
+            width: 40,
+            colour,
+            ..PrintOptions::default()
+        };
+        print(&document, &Theme::dark(), options, &mut out).unwrap();
         String::from_utf8(out).unwrap()
     }
 

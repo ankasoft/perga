@@ -495,6 +495,21 @@ fn every_configuration_key_is_documented() {
     }
 }
 
+/// `docs/configuration.md` quotes the reference block verbatim. Quoting is
+/// what makes the page readable in one place; this is what stops the copy
+/// drifting from the file `--generate-config` actually prints.
+#[test]
+fn the_configuration_page_quotes_the_reference_block_exactly() {
+    let reference = perga::config::DEFAULT_CONFIG.trim();
+    let page = include_str!("../docs/configuration.md");
+
+    assert!(
+        page.contains(reference),
+        "docs/configuration.md no longer quotes docs/default-config.toml \
+         verbatim; re-copy it"
+    );
+}
+
 #[test]
 fn every_theme_key_is_documented() {
     let dark = include_str!("../themes/dark.toml");

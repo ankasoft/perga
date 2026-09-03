@@ -564,6 +564,8 @@ pub struct Renderer {
     code_block_bg: Style,
     rule: Style,
     blockquote_bar: Style,
+    /// Whether a heading keeps the `#` it was written with.
+    heading_markers: bool,
     text: Style,
     task_done: Style,
     task_todo: Style,
@@ -573,6 +575,15 @@ pub struct Renderer {
 
 impl Renderer {
     /// Build a renderer for a theme.
+    /// Whether headings keep the `#` they were written with.
+    ///
+    /// A builder rather than a fourth parameter: every renderer wants the
+    /// default, and one call site sets it from `ui.show_heading_markers`.
+    pub fn with_heading_markers(mut self, show: bool) -> Self {
+        self.heading_markers = show;
+        self
+    }
+
     pub fn new(theme: &Theme, highlighter: Highlighter, width: u16) -> Self {
         Renderer {
             styles: ThemeStyleSheet::new(theme),
@@ -584,6 +595,7 @@ impl Renderer {
             code_block_bg: theme.markdown.code_block_bg,
             rule: theme.markdown.rule,
             blockquote_bar: theme.markdown.blockquote_bar,
+            heading_markers: true,
             text: theme.markdown.text,
             task_done: theme.markdown.task_done,
             task_todo: theme.markdown.task_todo,
@@ -624,6 +636,10 @@ impl Renderer {
                 Line::from(spans).style(line.style)
             })
             .collect();
+
+        if !self.heading_markers && matches!(block.kind, BlockKind::Heading(_)) {
+            lines = lines.into_iter().map(strip_heading_marker).collect();
+        }
 
         lines = lines.into_iter().map(strip_link_destination).collect();
         lines = lines.into_iter().map(render_image_placeholder).collect();
@@ -838,6 +854,26 @@ fn strip_code_fences(source: &str) -> String {
         out.push('\n');
     }
     out
+}
+
+/// Drop the `## ` a heading is written with.
+///
+/// `tui-markdown` emits it as its own leading span, which is what makes this a
+/// span to remove rather than text to parse.
+fn strip_heading_marker(line: Line<'static>) -> Line<'static> {
+    let style = line.style;
+    let mut spans = line.spans;
+
+    let is_marker = spans.first().is_some_and(|span| {
+        let content = span.content.trim_end();
+        !content.is_empty() && content.chars().all(|c| c == '#')
+    });
+
+    if is_marker {
+        spans.remove(0);
+    }
+
+    Line::from(spans).style(style)
 }
 
 /// Drop the ` (destination)` that `tui-markdown` appends after a link label.
@@ -1630,5 +1666,57 @@ mod tests {
             "{text:?}"
         );
         assert!(text.iter().any(|l| l.contains("Note")), "{text:?}");
+    }
+
+    // -- Heading markers ---------------------------------------------------
+
+    #[test]
+    fn a_heading_keeps_its_marker_by_default() {
+        let text = render_all("## Kurulum\n", 30);
+        assert!(text.iter().any(|l| l.starts_with("## Kurulum")), "{text:?}");
+    }
+
+    #[test]
+    fn the_marker_can_be_turned_off() {
+        let document = Document::scratch("# One\n\n### Three\n\nbody\n");
+        let renderer = renderer(30).with_heading_markers(false);
+        let mut layout = RenderedDocument::new();
+
+        let text = text_of(&layout.window(&document, &renderer, 0, 20));
+
+        assert!(text.iter().any(|l| l == "One"), "{text:?}");
+        assert!(text.iter().any(|l| l == "Three"), "{text:?}");
+        assert!(!text.iter().any(|l| l.contains('#')), "{text:?}");
+    }
+
+    /// The heading keeps its style; only the marker goes.
+    #[test]
+    fn a_heading_without_its_marker_is_still_styled() {
+        let theme = Theme::dark();
+        let document = Document::scratch("# One\n");
+        let renderer = renderer(30).with_heading_markers(false);
+        let mut layout = RenderedDocument::new();
+
+        let lines = layout.window(&document, &renderer, 0, 5);
+        let at = text_of(&lines)
+            .iter()
+            .position(|l| l.contains("One"))
+            .expect("the heading");
+
+        // `tui-markdown` puts a heading's style on the line, not on its
+        // spans, so removing the marker span cannot lose it.
+        assert_eq!(lines[at].style.fg, theme.markdown.h1.fg);
+    }
+
+    /// A paragraph beginning with a `#` that is not a heading — an escaped
+    /// one, or a fragment link — must not lose it.
+    #[test]
+    fn only_a_heading_loses_a_leading_hash() {
+        let document = Document::scratch("\\# not a heading\n");
+        let renderer = renderer(30).with_heading_markers(false);
+        let mut layout = RenderedDocument::new();
+
+        let text = text_of(&layout.window(&document, &renderer, 0, 5));
+        assert!(text.iter().any(|l| l.contains('#')), "{text:?}");
     }
 }

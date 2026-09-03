@@ -657,6 +657,7 @@ impl App {
     /// A renderer for the current theme at a given content width.
     pub fn renderer(&self, width: u16) -> Renderer {
         Renderer::new(&self.theme, self.highlighter.clone(), width)
+            .with_heading_markers(self.ui.show_heading_markers)
     }
 
     /// The content area of the viewport, inside its border.

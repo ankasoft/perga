@@ -77,6 +77,10 @@ sidebar_default_mode = "files"
 # Show the tab bar even with a single tab open.
 always_show_tabs = false
 show_line_numbers = false
+# Show the `#` a heading is written with. With it off, a heading is told from
+# body text by colour and weight alone — enough on a colour terminal, and not
+# enough under NO_COLOR, where every level collapses to bold.
+show_heading_markers = true
 show_status_bar = true
 # Lines scrolled per mouse wheel notch.
 mouse_scroll_lines = 3
