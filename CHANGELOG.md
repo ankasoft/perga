@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-09-03
+
+### Added
+
+- **`m t` switches theme without restarting**, cycling `dark`, `light`,
+  `high-contrast`, and then whatever themes are in your theme directory. The
+  choice is remembered for the next run on that vault — unless you started with
+  `--theme`, which is a decision about that run and is not overwritten.
+
+  The session file has recorded the last theme since 0.1.0 and nothing ever
+  read it back, because nothing could change the theme at runtime.
+
+### Fixed
+
+- **Colour degradation is no longer crude.** On a terminal that does not
+  advertise truecolour in `COLORTERM` — which is many of them — every colour is
+  mapped to the ANSI-256 palette. That mapping snapped each channel to the
+  colour cube after a per-channel grey test, and it was badly wrong for the
+  colours that matter most: the page background became pure black, 63 units off
+  its intended value, and the selection background came out twice as light as
+  intended, eating the contrast of every foreground drawn on it.
+
+  It now searches the whole palette. The page background is 14 units off
+  instead of 63, the selection 16 instead of 70.
+
+- Two colours that still failed contrast once degraded — `code_inline` in both
+  themes, and the dark theme's muted grey — were adjusted. The contrast tests
+  now measure both palettes, so a terminal without truecolour gets the same
+  guarantee as one with it.
+
 ## [0.1.3] — 2026-09-03
 
 ### Fixed
@@ -160,7 +190,8 @@ The first release.
 - Deletion is deliberately not offered. Every other file operation can be
   undone; that one cannot.
 
-[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/ankasoft/perga/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/ankasoft/perga/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/ankasoft/perga/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ankasoft/perga/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ankasoft/perga/compare/v0.1.0...v0.1.1
