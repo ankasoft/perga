@@ -228,6 +228,9 @@ impl LineMap {
     }
 }
 
+/// The character a thematic break is drawn with.
+const RULE_GLYPH: char = '─';
+
 /// The key a rendered block is cached under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct CacheKey {
@@ -556,6 +559,7 @@ pub struct Renderer {
     highlighter: Highlighter,
     code_theme: String,
     code_block_bg: Style,
+    rule: Style,
     text: Style,
     task_done: Style,
     task_todo: Style,
@@ -574,6 +578,7 @@ impl Renderer {
                 .clone()
                 .unwrap_or_else(|| FALLBACK_CODE_THEME.to_string()),
             code_block_bg: theme.markdown.code_block_bg,
+            rule: theme.markdown.rule,
             text: theme.markdown.text,
             task_done: theme.markdown.task_done,
             task_todo: theme.markdown.task_todo,
@@ -591,6 +596,10 @@ impl Renderer {
 
         if let BlockKind::CodeBlock(language) = &block.kind {
             return self.render_code(source, language.as_deref(), width);
+        }
+
+        if block.kind == BlockKind::Rule {
+            return self.render_rule(width);
         }
 
         let options = Options::new(self.styles.clone()).image_fallback(ImageFallback::AltText);
@@ -631,12 +640,26 @@ impl Renderer {
         with_trailing_blank(lines)
     }
 
+    /// Render a thematic break.
+    ///
+    /// `tui-markdown` passes `---` through as the three characters that were
+    /// typed. A rule is a horizontal line, and the theme has had a `rule` key
+    /// for it since the first version.
+    fn render_rule(&self, width: u16) -> Vec<Line<'static>> {
+        let line = Line::from(Span::styled(
+            RULE_GLYPH.to_string().repeat(usize::from(width).max(1)),
+            self.rule,
+        ));
+
+        with_trailing_blank(vec![line])
+    }
+
     /// Render a fenced code block.
     ///
     /// Never wrapped: wrapping code destroys its meaning. Lines longer than the
     /// viewport are clipped by the viewport and reachable with horizontal
     /// scrolling.
-    fn render_code(&self, source: &str, language: Option<&str>, _width: u16) -> Vec<Line<'static>> {
+    fn render_code(&self, source: &str, language: Option<&str>, width: u16) -> Vec<Line<'static>> {
         let code = strip_code_fences(source);
 
         let mut lines = self
@@ -650,8 +673,21 @@ impl Renderer {
 
         // The block's background belongs to the theme, not to the syntect
         // theme, so it is applied to whole lines here.
+        //
+        // A line's style only paints the cells its spans occupy, so a short
+        // line would leave the background ending mid-row and the block would
+        // read as ragged text rather than as a block. Each line is padded to
+        // the viewport width to close it off. A line longer than that is left
+        // alone: the viewport clips it and marks it, which is what horizontal
+        // scrolling is for.
         for line in &mut lines {
             line.style = line.style.patch(self.code_block_bg);
+
+            let used: usize = line.spans.iter().map(|s| s.content.width()).sum();
+            if let Some(gap) = usize::from(width).checked_sub(used).filter(|g| *g > 0) {
+                line.spans
+                    .push(Span::styled(" ".repeat(gap), self.code_block_bg));
+            }
         }
 
         with_trailing_blank(lines)
@@ -1390,5 +1426,91 @@ mod tests {
         let renderer = renderer(0);
         let mut layout = RenderedDocument::new();
         assert!(layout.resolve_all(&document, &renderer));
+    }
+
+    /// `tui-markdown` passes `---` through as three characters. A rule is a
+    /// line, and the theme has had a `rule` key for it since the first
+    /// version — unused until this.
+    #[test]
+    fn a_thematic_break_is_drawn_as_a_line() {
+        let document = Document::scratch("before\n\n---\n\nafter\n");
+        let renderer = renderer(30);
+        let mut layout = RenderedDocument::new();
+
+        let text = text_of(&layout.window(&document, &renderer, 0, 20));
+
+        let rule = text
+            .iter()
+            .find(|line| line.starts_with('─'))
+            .expect("the break is a line of rule glyphs, not `---`");
+
+        assert_eq!(rule.chars().count(), 30, "it spans the width");
+        assert!(
+            !text.iter().any(|line| line.trim() == "---"),
+            "the markup is not shown: {text:?}"
+        );
+    }
+
+    #[test]
+    fn a_thematic_break_takes_the_theme_s_rule_style() {
+        let theme = Theme::dark();
+        let document = Document::scratch("---\n");
+        let renderer = renderer(10);
+        let mut layout = RenderedDocument::new();
+
+        let lines = layout.window(&document, &renderer, 0, 5);
+        let at = text_of(&lines)
+            .iter()
+            .position(|line| line.starts_with('─'))
+            .expect("a rule");
+
+        assert_eq!(lines[at].spans[0].style.fg, theme.markdown.rule.fg);
+    }
+
+    /// A line's style only paints the cells its spans occupy, so a short line
+    /// of code left the background ending mid-row and the block read as
+    /// ragged text rather than as a block.
+    #[test]
+    fn a_code_block_paints_its_background_across_the_width() {
+        let theme = Theme::dark();
+        let document = Document::scratch("```\nx\nlonger line\n```\n");
+        let renderer = renderer(24);
+        let mut layout = RenderedDocument::new();
+
+        let lines = layout.window(&document, &renderer, 0, 10);
+
+        let text = text_of(&lines);
+
+        for (at, rendered) in text.iter().enumerate() {
+            if rendered.trim().is_empty() {
+                continue;
+            }
+            assert_eq!(
+                rendered.chars().count(),
+                24,
+                "every code line reaches the edge: {rendered:?}"
+            );
+            assert_eq!(
+                lines[at].spans.last().unwrap().style.bg,
+                theme.markdown.code_block_bg.bg,
+                "and the padding carries the block's background"
+            );
+        }
+    }
+
+    /// A line wider than the viewport is left alone: clipping and the `…`
+    /// marker are the viewport's job, and padding it would defeat them.
+    #[test]
+    fn a_code_line_wider_than_the_viewport_is_not_padded() {
+        let document = Document::scratch("```\nabcdefghijklmnopqrstuvwxyz\n```\n");
+        let renderer = renderer(10);
+        let mut layout = RenderedDocument::new();
+
+        let code = text_of(&layout.window(&document, &renderer, 0, 5))
+            .into_iter()
+            .find(|l| l.starts_with("abc"))
+            .expect("the code line");
+
+        assert_eq!(code.chars().count(), 26);
     }
 }

@@ -930,6 +930,29 @@ theme on screen reloads the previous one over the top. There is a test.
 *this* run. The session is only allowed to restore a theme when no flag pinned
 one.
 
+### D83i: a thematic break is a line, and a code block is a block
+
+Asked whether documents could render more visually. Two things turned out to
+be defects rather than matters of taste.
+
+**`---` was printed as three characters.** `tui-markdown` passes a thematic
+break through as the text that was typed. The theme has had a `markdown.rule`
+key since the first version, `docs/theming.md` documents it, and nothing used
+it. A rule is now a line of `─` across the width, in that style.
+
+**A code block's background stopped where its text did.** A `Line`'s style only
+paints the cells its spans occupy, so a short line left the background ending
+mid-row and the block read as ragged text on a slightly darker strip. Each line
+is now padded to the viewport width with the block's background.
+
+A line *wider* than the viewport is deliberately left alone: clipping and the
+`…` marker are the viewport's job, and padding it would defeat both. There is a
+test for each half.
+
+Neither shows up in a text snapshot, because the snapshot helper trims trailing
+spaces — which is why both survived to a released version. The unit tests
+assert the styles.
+
 ### D84: the archives are `.tar.xz`, and the release names have no version
 
 That is what `dist` produces — `perga-x86_64-unknown-linux-musl.tar.xz`, inside
