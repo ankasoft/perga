@@ -37,9 +37,8 @@ with an optional scope such as `feat(vault):`.
 - Subject in the imperative mood, 72 characters or fewer, no trailing period.
 - Body explains *why* when the change is not self-evident. Wrap at 72.
 - One logical change per commit.
-
-The `.githooks/commit-msg` hook rejects messages containing AI-assistant
-attribution trailers. The same check runs in CI over the commits in a push range.
+- No AI-assistant attribution. The `.githooks/commit-msg` hook and CI both
+  reject it; ordinary `Co-authored-by` trailers are fine.
 
 ## Scope
 

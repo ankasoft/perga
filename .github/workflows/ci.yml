@@ -33,7 +33,7 @@ jobs:
             range="${{ github.event.before }}..${{ github.sha }}"
           fi
           echo "Checking commits in $range"
-          pattern='claude|anthropic|co-authored-by|generated with|ai-assisted|🤖'
+          pattern='claude|anthropic|generated with|ai-assisted|copilot|chatgpt|🤖'
           if git log --format='%B' "$range" | grep -inE "$pattern"; then
             echo "::error::A commit message contains AI attribution."
             exit 1

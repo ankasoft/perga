@@ -3,12 +3,16 @@
 #
 # Enforced mechanically rather than by convention. The same check runs in CI over
 # the commits in a push range; see .github/workflows/ci.yml.
+#
+# `Co-authored-by` is deliberately NOT in the pattern. It is git's standard
+# trailer for two people who wrote a commit together, and banning it to catch
+# one tool's default would reject honest human co-authorship.
 
 set -e
 
 msg_file="$1"
 
-pattern='claude|anthropic|co-authored-by|generated with|ai-assisted|🤖'
+pattern='claude|anthropic|generated with|ai-assisted|copilot|chatgpt|🤖'
 
 if grep -qiE "$pattern" "$msg_file"; then
     echo "commit-msg: rejected." >&2
